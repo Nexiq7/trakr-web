@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { Hero } from '../components/Hero';
+import { Bento } from '../components/Bento';
+import { StarBar } from '../components/StarBar';
 import { PosterCard, PosterCardSkeleton, resolveImage } from '../components/PosterCard';
 import { useAuth } from '../context/AuthContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -30,13 +33,22 @@ function Row({ title, items, loading, type }: { title: string; items: Show[]; lo
     <section>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-[22px] font-semibold tracking-tight">{title}</h2>
-        <div className="hidden md:flex gap-2">
-          <button onClick={() => scroll(-1)} className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors">
-            <ChevronLeft size={16} />
-          </button>
-          <button onClick={() => scroll(1)} className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors">
-            <ChevronRight size={16} />
-          </button>
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/discover?type=${type}`}
+            className="flex items-center gap-1 text-[13px] font-medium text-white/45 hover:text-white/80 transition-colors duration-300 ease-apple"
+          >
+            See all
+            <ArrowRight size={13} />
+          </Link>
+          <div className="hidden md:flex gap-2">
+            <button onClick={() => scroll(-1)} className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <button onClick={() => scroll(1)} className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors">
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -68,10 +80,10 @@ export const Home = () => {
   const [popularMovies, setPopularMovies] = useState<Show[]>([]);
   const [seriesLoading, setSeriesLoading] = useState(true);
   const [moviesLoading, setMoviesLoading] = useState(true);
+  // Only feeds the Bento's poster shelf (as a fallback before popularSeries
+  // loads) — the "Trending Series/Movies" rails that used to render this were
+  // removed, so there's no movies variant or loading flag to track anymore.
   const [trendingSeries, setTrendingSeries] = useState<Show[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<Show[]>([]);
-  const [trendingSeriesLoading, setTrendingSeriesLoading] = useState(true);
-  const [trendingMoviesLoading, setTrendingMoviesLoading] = useState(true);
   const [continueWatchingRaw, setContinueWatchingRaw] = useState<WatchlistItem[]>([]);
   const continueWatching = token ? continueWatchingRaw : [];
 
@@ -94,14 +106,6 @@ export const Home = () => {
       .then((res) => res.json())
       .then((json) => {
         setTrendingSeries((json.data || []).slice(0, 20));
-        setTrendingSeriesLoading(false);
-      });
-
-    fetch(`${import.meta.env.VITE_API_URL}/tvdb/browse/movies?trending=1`)
-      .then((res) => res.json())
-      .then((json) => {
-        setTrendingMovies((json.data || []).slice(0, 20));
-        setTrendingMoviesLoading(false);
       });
   }, []);
 
@@ -118,6 +122,16 @@ export const Home = () => {
   return (
     <div>
       <Hero />
+
+      {/* Signed-out visitors get the pitch before the rails — buried under four
+          carousels it may as well not exist. Signed-in users have already bought
+          it and go straight to the content, with only the star ask at the end. */}
+      {!token && (
+        <>
+          <Bento posters={trendingSeries.length > 0 ? trendingSeries : popularSeries} />
+          <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+        </>
+      )}
 
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 py-14 space-y-14">
         {continueWatching.length > 0 && (
@@ -151,11 +165,11 @@ export const Home = () => {
           </section>
         )}
 
-        <Row title="Trending Series" items={trendingSeries} loading={trendingSeriesLoading} type="series" />
-        <Row title="Trending Movies" items={trendingMovies} loading={trendingMoviesLoading} type="movie" />
         <Row title="Popular Series" items={popularSeries} loading={seriesLoading} type="series" />
         <Row title="Popular Movies" items={popularMovies} loading={moviesLoading} type="movie" />
       </div>
+
+      {token && <StarBar />}
     </div>
   );
 };

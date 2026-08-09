@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PosterCard, PosterCardSkeleton } from '../components/PosterCard';
 
 interface Show {
@@ -28,7 +29,13 @@ const SORTS: { id: 'trending' | 'score' | 'firstAired' | 'name'; label: string }
 const PAGE_SIZE = 24;
 
 export const Discover = () => {
-  const [type, setType] = useState<'series' | 'movie'>('series');
+  // A "See all" link elsewhere in the app (e.g. Home's Popular Movies row) can
+  // land here already on the right type via ?type=movie. Read once on mount —
+  // afterwards `type` is just local UI state, same as sort and genre.
+  const [searchParams] = useSearchParams();
+  const [type, setType] = useState<'series' | 'movie'>(
+    searchParams.get('type') === 'movie' ? 'movie' : 'series',
+  );
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
   const [sort, setSort] = useState<'trending' | 'score' | 'firstAired' | 'name'>('trending');

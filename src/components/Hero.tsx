@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
+import { GithubIcon } from './GithubIcon';
 import { useAuth } from '../context/AuthContext';
+import { REPO_URL } from '../lib/constants';
 
 export const Hero = () => {
   const { token } = useAuth();
@@ -18,6 +20,18 @@ export const Hero = () => {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
       <div className="relative z-10 w-full max-w-xl flex flex-col items-center text-center gap-6 animate-fade-up">
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="-mb-2 inline-flex items-center gap-2 pl-3 pr-3.5 py-1.5 rounded-full bg-white/6 border border-white/10 text-[12.5px] font-medium text-white/50 hover:text-white hover:border-white/25 transition-colors duration-300 ease-apple"
+        >
+          <GithubIcon size={13} />
+          Open source
+          <span aria-hidden className="w-px h-3 bg-white/15" />
+          MIT
+        </a>
+
         <h1 className="text-[64px] md:text-[80px] leading-none font-semibold tracking-tight text-white">
           trakr
         </h1>

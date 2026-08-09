@@ -23,9 +23,11 @@
 Every other tracker feels like a spreadsheet with a poster grid bolted on. trakr doesn't. It's built around a single cinematic hero that rotates through what's actually trending, a genre-driven Discover page for when you don't know what you want yet, and a Collection that stays out of your way until you need it. Movie and show data comes straight from [TheTVDB](https://thetvdb.com/).
 
 > **trakr is live at [trakr.lol](https://trakr.lol)** — that's the real thing,
-> and the fastest way to see it. This repository is the web client behind it,
-> published so the build is readable; the API it talks to is a separate service
-> that isn't public.
+> and the fastest way to see it. This repository is the web client behind it.
+> The whole stack is open source and MIT licensed: this repo is the client, and
+> [trakr-api](https://github.com/Nexiq7/trakr-api) is the backend — clone both
+> and `docker compose up` runs the entire app on your own hardware, no cloud
+> account required.
 
 ## ✨ Features
 
@@ -39,21 +41,38 @@ Every other tracker feels like a spreadsheet with a poster grid bolted on. trakr
 ## 📸 Screenshots
 
 | Discover                                | Search                              |
-| --------------------------------------- | ----------------------------------- |
+| --------------------------------------- | ------------------------------------ |
 | ![Discover](public/assets/Discover.png) | ![Search](public/assets/Search.png) |
 
 | Details                               | Collection                                  |
-| ------------------------------------- | ------------------------------------------- |
+| ------------------------------------- | -------------------------------------------- |
 | ![Details](public/assets/Details.png) | ![Collection](public/assets/Collection.png) |
 
 ## 🚀 Run it
 
 If you just want to use trakr, go to [trakr.lol](https://trakr.lol) — nothing to
-install. What follows is for running the client from source.
+install.
+
+To run your own copy — this client plus the [trakr-api](https://github.com/Nexiq7/trakr-api)
+backend, on a local SQLite database with no cloud account — the fastest path is
+Docker Compose from the API repo:
+
+```bash
+git clone https://github.com/Nexiq7/trakr-api.git
+cd trakr-api
+cp .env.example .env    # add a free TVDB API key, set a JWT secret
+
+docker compose up       # client → http://localhost:8080, api → http://localhost:3007
+```
+
+See [trakr-api's README](https://github.com/Nexiq7/trakr-api#readme) for details.
+What follows here is for running just this client from source, against an API
+you already have running somewhere.
 
 **You'll need:** [Node](https://nodejs.org/) 20+ and a trakr API to point
-`VITE_API_URL` at. The hosted one only accepts browser requests from the
-trakr.lol origin, so a local build can't borrow it.
+`VITE_API_URL` at. The hosted one at trakr.lol only accepts browser requests
+from the trakr.lol origin, so a local build can't borrow it — run your own
+[trakr-api](https://github.com/Nexiq7/trakr-api) instead.
 
 ```bash
 cp .env.example .env    # point VITE_API_URL at your API (default: http://localhost:3007)
