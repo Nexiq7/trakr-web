@@ -1,0 +1,12 @@
+# Excluded so the image can only be configured by the VITE_API_URL build arg —
+# a stray local .env would otherwise bake localhost into a production build.
+.env
+.env.*
+!.env.example
+
+node_modules
+dist
+.git
+.gitignore
+Dockerfile
+.dockerignore
