@@ -62,8 +62,6 @@ function Row({ title, items, loading, type }: { title: string; items: Show[]; lo
   );
 }
 
-const HERO_ROTATE_MS = 8000;
-
 export const Home = () => {
   const { token } = useAuth();
   const [popularSeries, setPopularSeries] = useState<Show[]>([]);
@@ -74,8 +72,6 @@ export const Home = () => {
   const [trendingMovies, setTrendingMovies] = useState<Show[]>([]);
   const [trendingSeriesLoading, setTrendingSeriesLoading] = useState(true);
   const [trendingMoviesLoading, setTrendingMoviesLoading] = useState(true);
-  const [featuredList, setFeaturedList] = useState<any[]>([]);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
   const [continueWatchingRaw, setContinueWatchingRaw] = useState<WatchlistItem[]>([]);
   const continueWatching = token ? continueWatchingRaw : [];
 
@@ -97,20 +93,8 @@ export const Home = () => {
     fetch(`${import.meta.env.VITE_API_URL}/tvdb/browse/series?trending=1`)
       .then((res) => res.json())
       .then((json) => {
-        const list = (json.data || []).slice(0, 20);
-        setTrendingSeries(list);
+        setTrendingSeries((json.data || []).slice(0, 20));
         setTrendingSeriesLoading(false);
-
-        // Hydrate the top few trending shows with full details (backdrop art,
-        // genres, trailer) so the hero can rotate through them.
-        Promise.all(
-          list.slice(0, 5).map((item: Show) =>
-            fetch(`${import.meta.env.VITE_API_URL}/tvdb/details/series/${item.id}`)
-              .then((res) => res.json())
-              .then((detail) => ({ ...detail.data, __type: 'series' }))
-              .catch(() => null)
-          )
-        ).then((results) => setFeaturedList(results.filter(Boolean)));
       });
 
     fetch(`${import.meta.env.VITE_API_URL}/tvdb/browse/movies?trending=1`)
@@ -131,29 +115,9 @@ export const Home = () => {
       .catch(() => setContinueWatchingRaw([]));
   }, [token]);
 
-  useEffect(() => {
-    if (featuredList.length <= 1) return;
-    const interval = setInterval(() => {
-      setFeaturedIndex((i) => (i + 1) % featuredList.length);
-    }, HERO_ROTATE_MS);
-    return () => clearInterval(interval);
-  }, [featuredList.length]);
-
-  const featured = featuredList[featuredIndex];
-
   return (
     <div>
-      {featured ? (
-        <Hero
-          item={featured}
-          type={featured.__type}
-          dotCount={featuredList.length}
-          activeDot={featuredIndex}
-          onDotClick={setFeaturedIndex}
-        />
-      ) : (
-        <div className="relative h-[78vh] min-h-[560px] w-full art-placeholder art-loading" />
-      )}
+      <Hero />
 
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 py-14 space-y-14">
         {continueWatching.length > 0 && (

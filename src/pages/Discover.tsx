@@ -51,25 +51,61 @@ export const Discover = () => {
 
   useEffect(() => {
     const apiType = type === 'movie' ? 'movies' : 'series';
-    const params = new URLSearchParams();
-    if (sort === 'trending') {
-      params.set('trending', '1');
-    } else {
-      params.set('sort', sort);
-      params.set('sortType', sort === 'name' ? 'asc' : 'desc');
-    }
-    if (genreKey) params.set('genre', genreKey);
+    const selected = genreKey ? genreKey.split(',') : [];
+
+    const buildUrl = (genre?: string) => {
+      const params = new URLSearchParams();
+      if (sort === 'trending') {
+        params.set('trending', '1');
+      } else {
+        params.set('sort', sort);
+        params.set('sortType', sort === 'name' ? 'asc' : 'desc');
+      }
+      if (genre) params.set('genre', genre);
+      return `${import.meta.env.VITE_API_URL}/tvdb/browse/${apiType}?${params}`;
+    };
+
+    // Selecting several genres means "all of these", not "any of these". Browse
+    // results carry no genre field to filter on, so ask for each genre on its
+    // own and keep only the titles that came back in every one.
+    const urls = selected.length > 0 ? selected.map(buildUrl) : [buildUrl()];
+
+    let cancelled = false;
 
     Promise.resolve().then(() => {
       setIsLoading(true);
       setVisibleCount(PAGE_SIZE);
     });
 
-    fetch(`${import.meta.env.VITE_API_URL}/tvdb/browse/${apiType}?${params}`)
-      .then((res) => res.json())
-      .then((json) => setItems(json.data || []))
-      .catch(() => setItems([]))
-      .finally(() => setIsLoading(false));
+    Promise.all(
+      urls.map((url) =>
+        fetch(url)
+          .then((res) => res.json())
+          .then((json) => (json.data || []) as Show[])
+      )
+    )
+      .then(([first = [], ...rest]) => {
+        if (cancelled) return;
+        // Intersect on id, keeping the first response's order so the chosen
+        // sort still holds.
+        const items = rest.reduce((acc, list) => {
+          const ids = new Set(list.map((item) => String(item.id)));
+          return acc.filter((item) => ids.has(String(item.id)));
+        }, first);
+        setItems(items);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    // Genre toggles fire in quick succession; without this a slower earlier
+    // request could land last and overwrite the current filter's results.
+    return () => {
+      cancelled = true;
+    };
   }, [type, genreKey, sort]);
 
   const visibleItems = items.slice(0, visibleCount);

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Search as SearchIcon, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search as SearchIcon } from 'lucide-react';
 import { PosterCard } from '../components/PosterCard';
+import { SearchBar } from '../components/SearchBar';
 
 interface Result {
   tvdb_id: string;
@@ -19,7 +21,15 @@ const FILTERS: { id: 'all' | 'series' | 'movie'; label: string }[] = [
 const SUGGESTIONS = ['Breaking Bad', 'Stranger Things', 'Inception', 'The Bear', 'Dune', 'Squid Game'];
 
 export const Search = () => {
-  const [query, setQuery] = useState('');
+  // The URL owns the query rather than local state: a search handed over from
+  // the home page runs on arrival, and any search can be linked or bookmarked.
+  // Keystrokes replace the entry instead of pushing, so Back leaves the page
+  // once rather than unwinding the term a letter at a time.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get('q') ?? '';
+  const setQuery = (value: string) =>
+    setSearchParams(value ? { q: value } : {}, { replace: true });
+
   const [rawResults, setRawResults] = useState<Result[] | null>(null);
   const [filter, setFilter] = useState<'all' | 'series' | 'movie'>('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,20 +62,14 @@ export const Search = () => {
   return (
     <div className="min-h-screen pt-28 md:pt-36 pb-24 px-6">
       <div className="max-w-2xl mx-auto mb-3">
-        <form onSubmit={(e) => e.preventDefault()} className="relative">
-          <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-white/35" size={18} />
-          <input
-            type="text"
-            autoFocus
-            value={query}
-            placeholder="Search for movies or TV shows..."
-            className="w-full bg-surface border border-white/10 focus:border-accent/50 py-4 pl-13 pr-5 rounded-2xl text-lg text-white placeholder:text-white/30 outline-none transition-colors duration-300 ease-apple focus:shadow-[0_0_0_4px_rgba(124,92,255,0.14)]"
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {isLoading && (
-            <Loader2 className="absolute right-5 top-1/2 -translate-y-1/2 text-white/35 animate-spin" size={18} />
-          )}
-        </form>
+        {/* No onSubmit: results already update as you type. */}
+        <SearchBar
+          autoFocus
+          value={query}
+          onChange={setQuery}
+          isLoading={isLoading}
+          placeholder="Search for movies or shows..."
+        />
       </div>
 
       {results.length > 0 && (
