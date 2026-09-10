@@ -1,455 +1,514 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Loader2, Clock, Calendar, ShieldAlert, Tv, Users, Tag, Play, CalendarPlus,
-  ChevronLeft, ChevronRight
+  ArrowLeft,
+  Bookmark,
+  Calendar,
+  Check,
+  ChevronDown,
+  Clock,
+  Link2,
+  Play,
+  ShieldAlert,
+  Star,
+  Tv,
+  Users,
 } from 'lucide-react';
-import { ScoreBar } from '../components/ScoreBar';
-import { StatusButtons } from '../components/StatusButtons';
-import { resolveImage } from '../components/PosterCard';
-import { apiFetch, SessionExpiredError } from '../lib/api';
+import { Artwork } from '../components/Artwork';
+import { PosterCard, PosterCardSkeleton } from '../components/PosterCard';
+import { Rail, RailItem } from '../components/Rail';
+import { Segmented } from '../components/ui/Segmented';
+import { useWatchlist } from '../context/WatchlistContext';
+import { useTrackSheet } from '../context/TrackSheetContext';
+import { useToast } from '../context/ToastContext';
+import { useResource } from '../hooks/useResource';
+import {
+  browseKey,
+  detailsKey,
+  fetchBrowse,
+  fetchDetails,
+  type Episode,
+  type MediaDetails,
+  type MediaType,
+  type Title,
+} from '../lib/tvdb';
 
-interface Episode {
-  id: number;
-  name: string;
-  overview?: string;
-  seasonNumber: number;
-  number: number;
-  aired?: string;
-  runtime?: number;
-  image?: string;
+/** TVDB artwork type ids: 3 is a wide background, 23 a title logo. */
+const ARTWORK_BACKGROUND = 3;
+const ARTWORK_LOGO = 23;
+
+const RELATED_COUNT = 14;
+
+function formatDate(value?: string) {
+  if (!value) return 'TBA';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? 'TBA'
+    : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export const Details = () => {
-  const { type, id } = useParams();
+export function Details() {
+  const { type: rawType, id } = useParams();
   const navigate = useNavigate();
+  const type: MediaType = rawType === 'movie' ? 'movie' : 'series';
 
-  const [series, setSeries] = useState<any>(null);
-  const [status, setStatus] = useState('');
-  const [userScore, setUserScore] = useState(0);
-  const [addedAt, setAddedAt] = useState<string | null>(null);
+  const { entryFor } = useWatchlist();
+  const { openTracker } = useTrackSheet();
+  const { toast } = useToast();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { data: media, isLoading } = useResource<MediaDetails>(
+    detailsKey(type, id ?? ''),
+    () => fetchDetails(type, id ?? ''),
+    { enabled: Boolean(id) },
+  );
+
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
-  const apiType = type === 'movie' ? 'movies' : type;
-
-  useEffect(() => {
-    const loadAllData = async () => {
-      setIsLoading(true);
-      const token = localStorage.getItem('token');
-      const mediaKey = `${type}-${id}`;
-
-      try {
-        const [seriesRes, watchlistRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/tvdb/details/${apiType}/${id}`),
-          // An expired session shouldn't stop the page rendering — the title
-          // still loads, just without the viewer's tracking state.
-          token
-            ? apiFetch('/api/watchlist-details').catch(() => null)
-            : Promise.resolve(null),
-        ]);
-
-        const seriesJson = await seriesRes.json();
-        setSeries(seriesJson.data);
-
-        if (watchlistRes?.ok) {
-          const watchlistData = await watchlistRes.json();
-          const currentEntry = watchlistData.find((item: any) => item.mediaId === mediaKey);
-
-          if (currentEntry) {
-            setStatus(currentEntry.status);
-            setUserScore(currentEntry.score || 0);
-            setAddedAt(currentEntry.createdAt || null);
-          }
-        }
-      } catch (err) {
-        console.error("Initialization error:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadAllData();
-  }, [id, type, apiType]);
+  // A different title is a different page; anything the reader opened on the
+  // last one must not carry over.
+  const mediaId = `${type}-${id}`;
+  const [viewedId, setViewedId] = useState(mediaId);
+  if (viewedId !== mediaId) {
+    setViewedId(mediaId);
+    setSelectedSeason(null);
+    setOverviewOpen(false);
+  }
 
   const episodesBySeason = useMemo(() => {
     const map = new Map<number, Episode[]>();
-    ((series?.episodes || []) as Episode[]).forEach((ep) => {
-      const list = map.get(ep.seasonNumber) || [];
-      list.push(ep);
-      map.set(ep.seasonNumber, list);
-    });
+    for (const episode of media?.episodes ?? []) {
+      const list = map.get(episode.seasonNumber) ?? [];
+      list.push(episode);
+      map.set(episode.seasonNumber, list);
+    }
     for (const list of map.values()) list.sort((a, b) => a.number - b.number);
     return map;
-  }, [series]);
+  }, [media]);
 
-  const seasonNumbers = useMemo(() => {
-    return [...episodesBySeason.keys()].sort((a, b) => {
-      if (a === 0) return 1; // specials last
-      if (b === 0) return -1;
-      return a - b;
+  const seasonNumbers = useMemo(
+    () =>
+      [...episodesBySeason.keys()].sort((a, b) => {
+        if (a === 0) return 1; // specials last
+        if (b === 0) return -1;
+        return a - b;
+      }),
+    [episodesBySeason],
+  );
+
+  const activeSeason = selectedSeason ?? seasonNumbers[0] ?? null;
+  const seasonEpisodes = activeSeason !== null ? episodesBySeason.get(activeSeason) ?? [] : [];
+
+  const genres = media?.genres ?? [];
+  const primaryGenre = genres[0]?.id;
+
+  // "More like this" is the same genre from the browse endpoint — the API has
+  // no recommendations of its own, and titles that share a genre and a
+  // popularity band are a defensible stand-in.
+  const relatedKey = primaryGenre
+    ? browseKey({ type, sort: 'score', genres: [primaryGenre] })
+    : 'related:none';
+  const { data: relatedRaw, isLoading: relatedLoading } = useResource<Title[]>(
+    relatedKey,
+    () => fetchBrowse({ type, sort: 'score', genres: [primaryGenre!] }),
+    { enabled: primaryGenre != null },
+  );
+
+  const related = (relatedRaw ?? [])
+    .filter((item) => String(item.id) !== String(id))
+    .slice(0, RELATED_COUNT);
+
+  if (isLoading || !media) return <DetailsSkeleton />;
+
+  const logo = media.artworks?.find((art) => art.type === ARTWORK_LOGO)?.image;
+  const backdrop =
+    media.artworks?.find((art) => art.type === ARTWORK_BACKGROUND)?.image ?? media.image;
+  const rating = media.contentRatings?.find((item) => item.country === 'usa')?.name;
+  const network = media.originalNetwork?.name;
+  const runtime = media.averageRuntime || media.runtime;
+  const trailer = media.trailers?.find((item) => item.language === 'eng')?.url;
+  const tags = media.tags?.map((tag) => tag.name) ?? [];
+  const cast = [...(media.characters ?? [])]
+    .filter((person) => person.image)
+    .sort((a, b) => a.sort - b.sort)
+    .slice(0, 12);
+
+  const entry = entryFor(type, id ?? '');
+  const saved = entry !== undefined;
+
+  const track = () =>
+    openTracker({
+      type,
+      id: id ?? '',
+      name: media.name,
+      image: media.image,
+      year: media.year,
     });
-  }, [episodesBySeason]);
 
-  const effectiveSeason = selectedSeason ?? seasonNumbers[0] ?? null;
-
-  const seasonScrollRef = useRef<HTMLDivElement>(null);
-  const [seasonOverflow, setSeasonOverflow] = useState(false);
-
-  useEffect(() => {
-    const el = seasonScrollRef.current;
-    if (!el) return;
-    const check = () => setSeasonOverflow(el.scrollWidth > el.clientWidth + 4);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, [seasonNumbers]);
-
-  const scrollSeasons = (dir: number) => seasonScrollRef.current?.scrollBy({ left: dir * 240, behavior: 'smooth' });
-
-  const handleTrack = async (newStatus?: string, newScore?: number) => {
-    setIsSyncing(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      setIsSyncing(false);
-      return;
-    }
-
-    const payload = {
-      mediaId: `${type}-${id}`,
-      type: type,
-      status: newStatus || status,
-      score: newScore ?? userScore
-    };
-
+  const share = async () => {
+    const url = window.location.href;
     try {
-      const response = await apiFetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        const saved = await response.json();
-        if (newStatus) setStatus(newStatus);
-        if (newScore !== undefined) setUserScore(newScore);
-        if (saved.createdAt) setAddedAt(saved.createdAt);
-      }
-    } catch (error) {
-      if (error instanceof SessionExpiredError) {
-        navigate('/login');
+      // The native sheet where there is one; otherwise the clipboard, which is
+      // what a desktop browser can actually offer.
+      if (navigator.share) {
+        await navigator.share({ title: media.name, url });
         return;
       }
-      console.error("Failed to sync tracking:", error);
-    } finally {
-      setIsSyncing(false);
+      await navigator.clipboard.writeText(url);
+      toast('Link copied');
+    } catch {
+      // A dismissed share sheet is a normal outcome, not a failure to report.
     }
   };
-
-  const handleRemove = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    setIsSyncing(true);
-    try {
-      const response = await apiFetch(`/api/track/${type}-${id}`, { method: 'DELETE' });
-
-      if (response.ok) {
-        setStatus('');
-        setUserScore(0);
-        setAddedAt(null);
-      }
-    } catch (error) {
-      if (error instanceof SessionExpiredError) {
-        navigate('/login');
-        return;
-      }
-      console.error("Failed to remove from collection:", error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  if (isLoading || !series) {
-    return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin text-white/30" size={28} />
-        <span className="text-white/40 font-medium tracking-[0.25em] text-[10px] uppercase">Synchronizing</span>
-      </div>
-    );
-  }
-
-  const logo = series.artworks?.find((a: any) => a.type === 23)?.image;
-  const backdrop = series.artworks?.find((a: any) => a.type === 3)?.image || series.image;
-  const poster = resolveImage(series.image);
-
-  const rating = series.contentRatings?.find((r: any) => r.country === 'usa')?.name || '';
-  const network = series.originalNetwork?.name || '';
-  const genres = series.genres?.map((g: any) => g.name) || [];
-  const cast = series.characters?.filter((c: any) => c.image).sort((a: any, b: any) => a.sort - b.sort).slice(0, 9) || [];
-  const tags = series.tags?.map((t: any) => t.name) || [];
-  const trailer = series.trailers?.find((t: any) => t.language === 'eng')?.url;
-
-  const seasonEpisodes = effectiveSeason !== null ? episodesBySeason.get(effectiveSeason) || [] : [];
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans">
+    <div className="min-h-screen">
+      <header className="relative min-h-[540px] md:h-[70vh] md:min-h-[560px] w-full overflow-hidden">
+        <Artwork
+          image={backdrop}
+          alt=""
+          displayWidth={1600}
+          priority
+          className="absolute inset-0 w-full h-full"
+          imgClassName="animate-subtle-zoom"
+        />
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/25" />
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/20 to-transparent" />
 
-      {/* Hero */}
-      <div className="relative h-[64vh] min-h-[460px] w-full overflow-hidden">
-        <div className="absolute inset-0">
-          {backdrop && (
-            <img src={backdrop} className="w-full h-full object-cover animate-subtle-zoom" alt="" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/15" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/10 to-transparent" />
-        </div>
-
-        <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 flex flex-col justify-end pb-14">
+        <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-14 flex flex-col justify-end">
           <button
             onClick={() => navigate(-1)}
-            className="group flex items-center gap-2.5 text-white/60 hover:text-white transition-colors w-fit mb-8"
+            className="group flex items-center gap-2.5 text-white/60 hover:text-white transition-colors duration-300 w-fit mb-auto"
           >
-            <div className="w-8 h-8 rounded-full bg-white/8 group-hover:bg-white/14 border border-white/10 flex items-center justify-center">
-              <ArrowLeft size={14} />
-            </div>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.15em]">Back</span>
+            <span className="w-9 h-9 rounded-full glass-panel flex items-center justify-center transition-transform duration-300 ease-apple group-hover:-translate-x-0.5">
+              <ArrowLeft size={15} />
+            </span>
+            <span className="text-[13px] font-medium">Back</span>
           </button>
 
-          <div className="flex items-end gap-8">
-            {poster && (
-              <div className="hidden md:block w-[190px] shrink-0 aspect-[2/3] rounded-2xl overflow-hidden border border-white/10 shadow-[0_24px_60px_rgba(0,0,0,0.7)]">
-                <img src={poster} className="w-full h-full object-cover" alt="" />
-              </div>
-            )}
+          <div className="flex items-end gap-8 mt-10">
+            <Artwork
+              image={media.image}
+              alt=""
+              displayWidth={190}
+              priority
+              className="hidden md:block w-[190px] shrink-0 aspect-[2/3] rounded-2xl border border-white/12 shadow-[0_28px_70px_rgba(0,0,0,0.75)]"
+            />
 
-            <div className="max-w-2xl flex flex-col gap-4">
+            <div className="min-w-0 flex flex-col gap-4 animate-fade-up">
               {logo ? (
-                <img src={logo} alt={series.name} className="h-20 md:h-28 object-contain object-left drop-shadow-2xl" />
+                <img
+                  src={logo}
+                  alt={media.name}
+                  loading="eager"
+                  decoding="async"
+                  className="h-16 md:h-24 w-auto max-w-full object-contain object-left drop-shadow-2xl"
+                />
               ) : (
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.02]">{series.name}</h1>
+                <h1 className="text-[34px] md:text-[56px] font-semibold tracking-tight leading-[1.03] text-balance">
+                  {media.name}
+                </h1>
               )}
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-md bg-white/10 border border-white/10 text-white">
-                  {series.status?.name || 'Released'}
-                </span>
-                {rating && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/6 text-xs font-medium text-white/70">
-                    <ShieldAlert size={13} className="text-white/40" /> {rating}
-                  </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip>{media.status?.name || 'Released'}</Chip>
+                {media.year && (
+                  <Chip icon={Calendar}>{media.year}</Chip>
                 )}
-                {network && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/6 text-xs font-medium text-white/70">
-                    <Tv size={13} className="text-white/40" /> {network}
+                {runtime ? <Chip icon={Clock}>{runtime} min</Chip> : null}
+                {network && <Chip icon={Tv}>{network}</Chip>}
+                {rating && <Chip icon={ShieldAlert}>{rating}</Chip>}
+                {entry != null && entry.score > 0 && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-accent/20 border border-accent/35 text-[12px] font-semibold text-accent-soft">
+                    <Star size={11} fill="currentColor" /> {entry.score}/10
                   </span>
-                )}
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/6 text-xs font-medium text-white/70">
-                  <Calendar size={13} className="text-white/40" /> {series.year}
-                </span>
-                {(series.averageRuntime || series.runtime) && (
-                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/6 text-xs font-medium text-white/70">
-                    <Clock size={13} className="text-white/40" /> {series.averageRuntime || series.runtime}m
-                  </span>
-                )}
-                {genres.length > 0 && (
-                  <span className="text-xs font-medium text-white/50 ml-1">{genres.join(' · ')}</span>
                 )}
               </div>
 
-              {trailer && (
-                <a
-                  href={trailer}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 w-fit px-5 py-2.5 rounded-xl bg-accent-strong text-white text-sm font-semibold shadow-[0_2px_10px_rgba(0,0,0,0.35)] hover:brightness-110 transition"
-                >
-                  <Play size={15} fill="currentColor" /> Watch Trailer
-                </a>
+              {genres.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {genres.map((genre) => (
+                    <Link
+                      key={genre.id}
+                      to={`/discover?type=${type}&genres=${genre.id}`}
+                      className="px-2.5 py-1 rounded-full bg-white/6 border border-white/8 text-[12px] font-medium text-white/60 hover:text-white hover:bg-white/12 transition-colors duration-300 ease-apple"
+                    >
+                      {genre.name}
+                    </Link>
+                  ))}
+                </div>
               )}
+
+              <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                <button
+                  onClick={track}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-semibold transition-all duration-300 ease-apple active:scale-95 ${
+                    saved
+                      ? 'bg-accent text-white shadow-[0_8px_28px_rgba(124,92,255,0.4)]'
+                      : 'bg-white text-black hover:bg-white/90 shadow-[0_8px_28px_rgba(0,0,0,0.5)]'
+                  }`}
+                >
+                  {saved ? <Check size={16} strokeWidth={3} /> : <Bookmark size={15} />}
+                  {saved ? STATUS_TEXT[entry!.status] ?? 'In collection' : 'Save'}
+                </button>
+
+                {trailer && (
+                  <a
+                    href={trailer}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-5 py-3 rounded-full glass-panel text-[14px] font-semibold text-white hover:bg-white/16 transition-colors duration-300 ease-apple"
+                  >
+                    <Play size={15} fill="currentColor" /> Trailer
+                  </a>
+                )}
+
+                <button
+                  onClick={share}
+                  aria-label="Share this title"
+                  className="w-11 h-11 rounded-full glass-panel flex items-center justify-center text-white/70 hover:text-white hover:bg-white/16 transition-colors duration-300 ease-apple"
+                >
+                  <Link2 size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 py-12 md:py-14 flex flex-col gap-14">
+        {media.overview && (
+          <section className="max-w-3xl">
+            <SectionLabel>Overview</SectionLabel>
+            <p
+              className={`text-white/75 text-[15.5px] md:text-[16.5px] leading-relaxed mt-3.5 ${
+                overviewOpen ? '' : 'line-clamp-4'
+              }`}
+            >
+              {media.overview}
+            </p>
+            {media.overview.length > 320 && (
+              <button
+                onClick={() => setOverviewOpen((open) => !open)}
+                className="flex items-center gap-1.5 mt-3 text-[13px] font-medium text-white/50 hover:text-white transition-colors duration-300"
+              >
+                {overviewOpen ? 'Show less' : 'Read more'}
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-300 ease-apple ${
+                    overviewOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            )}
+          </section>
+        )}
+
+        {seasonNumbers.length > 0 && (
+          <section>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+              <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">
+                {activeSeason === 0 ? 'Specials' : `Season ${activeSeason}`}
+                <span className="ml-2.5 text-[13px] font-medium text-white/35">
+                  {seasonEpisodes.length} episode{seasonEpisodes.length === 1 ? '' : 's'}
+                </span>
+              </h2>
+
+              {seasonNumbers.length > 1 && (
+                <div className="max-w-full overflow-x-auto scrollbar-hide">
+                  <Segmented
+                    options={seasonNumbers.map((number) => ({
+                      id: String(number),
+                      label: number === 0 ? 'Specials' : `S${number}`,
+                    }))}
+                    value={String(activeSeason)}
+                    onChange={(next) => setSelectedSeason(Number(next))}
+                    label="Season"
+                  />
+                </div>
+              )}
+            </div>
+
+            <ol className="rounded-3xl overflow-hidden border border-white/8 bg-white/[0.025]">
+              {seasonEpisodes.map((episode) => (
+                <li
+                  key={episode.id}
+                  className="flex items-center gap-4 px-3.5 md:px-4 py-3 border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition-colors duration-300"
+                >
+                  <span className="w-7 text-center text-[13px] font-semibold text-white/25 shrink-0 tabular-nums">
+                    {episode.number}
+                  </span>
+                  <Artwork
+                    image={episode.image}
+                    alt=""
+                    displayWidth={112}
+                    className="w-[92px] md:w-28 shrink-0 aspect-video rounded-xl border border-white/8"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-medium text-white/90 truncate">
+                      {episode.name || `Episode ${episode.number}`}
+                    </p>
+                    <p className="text-[12px] text-white/40 mt-0.5">{formatDate(episode.aired)}</p>
+                  </div>
+                  {episode.runtime ? (
+                    <span className="text-[12px] text-white/35 shrink-0 tabular-nums">
+                      {episode.runtime}m
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {cast.length > 0 && (
+          <section>
+            <SectionLabel icon={Users}>Top cast</SectionLabel>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5 mt-4">
+              {cast.map((person) => (
+                <div key={person.id} className="flex items-center gap-3.5 min-w-0">
+                  <Artwork
+                    image={person.image}
+                    alt=""
+                    displayWidth={44}
+                    className="w-11 h-11 rounded-full border border-white/10 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-medium text-white/90 truncate">
+                      {person.personName}
+                    </p>
+                    <p className="text-[12px] text-white/40 truncate">{person.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {tags.length > 0 && (
+          <section>
+            <SectionLabel>Themes</SectionLabel>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1.5 rounded-xl bg-white/5 border border-white/8 text-[12.5px] font-medium text-white/55"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {(relatedLoading || related.length > 0) && primaryGenre != null && (
+        <div className="pb-12">
+          <Rail
+            title="More like this"
+            seeAll={`/discover?type=${type}&genres=${primaryGenre}&sort=score`}
+          >
+            {relatedLoading
+              ? Array.from({ length: 8 }).map((_, index) => (
+                  <RailItem key={index}>
+                    <PosterCardSkeleton />
+                  </RailItem>
+                ))
+              : related.map((item) => (
+                  <RailItem key={item.id}>
+                    <PosterCard
+                      type={type}
+                      id={item.id}
+                      name={item.name}
+                      subtitle={item.year}
+                      image={item.image}
+                      displayWidth={168}
+                    />
+                  </RailItem>
+                ))}
+          </Rail>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  watching: 'Watching',
+  planning: 'Planned',
+  completed: 'Completed',
+  dropped: 'Dropped',
+};
+
+function Chip({ children, icon: Icon }: { children: React.ReactNode; icon?: typeof Calendar }) {
+  return (
+    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/8 border border-white/8 text-[12px] font-medium text-white/75">
+      {Icon && <Icon size={12} className="text-white/40" />}
+      {children}
+    </span>
+  );
+}
+
+function SectionLabel({
+  children,
+  icon: Icon,
+}: {
+  children: React.ReactNode;
+  icon?: typeof Users;
+}) {
+  return (
+    <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+      {Icon && <Icon size={13} />}
+      {children}
+    </h2>
+  );
+}
+
+function DetailsSkeleton() {
+  return (
+    <div className="min-h-screen">
+      <div className="relative min-h-[540px] md:h-[70vh] md:min-h-[560px] overflow-hidden art-placeholder art-loading">
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
+        <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-14 flex items-end">
+          <div className="flex items-end gap-8 w-full">
+            <div className="hidden md:block w-[190px] shrink-0 aspect-[2/3] rounded-2xl skeleton border border-white/8" />
+            <div className="flex-1 flex flex-col gap-4 max-w-xl">
+              <div className="h-12 w-3/4 rounded-2xl skeleton" />
+              <div className="flex gap-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-7 w-20 rounded-lg skeleton" />
+                ))}
+              </div>
+              <div className="flex gap-2.5 mt-1">
+                <div className="h-12 w-32 rounded-full skeleton" />
+                <div className="h-12 w-28 rounded-full skeleton" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main layout */}
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 py-14">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-14">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 py-14 flex flex-col gap-10">
+        <div className="flex flex-col gap-2.5 max-w-3xl">
+          <div className="h-3 w-24 rounded-full skeleton" />
+          {[100, 96, 88, 60].map((width) => (
+            <div key={width} className="h-3.5 rounded-full skeleton" style={{ width: `${width}%` }} />
+          ))}
+        </div>
 
-          <div className="lg:col-span-8 flex flex-col gap-14 min-w-0">
-            {series.overview && (
-              <section className="flex flex-col gap-3.5">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40">Overview</h2>
-                <p className="text-white/80 text-[16px] md:text-[17px] leading-relaxed">{series.overview}</p>
-              </section>
-            )}
-
-            {seasonNumbers.length > 0 && (
-              <section className="flex flex-col gap-4">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    {effectiveSeason === 0 ? 'Specials' : `Season ${effectiveSeason}`}
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    {seasonEpisodes.length > 0 && (
-                      <span className="text-xs font-medium text-white/45 px-2.5 py-1 rounded-full bg-white/6">
-                        {seasonEpisodes.length} episodes
-                      </span>
-                    )}
-                    {seasonNumbers.length > 1 && seasonOverflow && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => scrollSeasons(-1)}
-                          aria-label="Scroll seasons left"
-                          className="w-7 h-7 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors"
-                        >
-                          <ChevronLeft size={14} />
-                        </button>
-                        <button
-                          onClick={() => scrollSeasons(1)}
-                          aria-label="Scroll seasons right"
-                          className="w-7 h-7 rounded-full bg-white/8 hover:bg-white/14 flex items-center justify-center transition-colors"
-                        >
-                          <ChevronRight size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {seasonNumbers.length > 1 && (
-                  <div ref={seasonScrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide scroll-smooth">
-                    {seasonNumbers.map((n) => (
-                      <button
-                        key={n}
-                        onClick={() => setSelectedSeason(n)}
-                        className={`flex-none px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors duration-300 ease-apple ${
-                          effectiveSeason === n ? 'bg-white/12 text-white' : 'text-white/45 hover:text-white/70'
-                        }`}
-                      >
-                        {n === 0 ? 'Specials' : `Season ${n}`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-0.5 rounded-2xl overflow-hidden bg-surface border border-white/8">
-                  {seasonEpisodes.map((ep) => (
-                    <div key={ep.id} className="flex items-center gap-4 px-4 py-3.5 border-b border-white/5 last:border-b-0">
-                      <span className="w-6 text-center text-[13px] font-semibold text-white/30 shrink-0">{ep.number}</span>
-                      <div className="w-24 aspect-video rounded-lg overflow-hidden bg-surface-2 shrink-0 relative">
-                        {resolveImage(ep.image) ? (
-                          <img src={resolveImage(ep.image)!} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="absolute inset-0 art-placeholder" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px] font-medium text-white/90 truncate">{ep.name || `Episode ${ep.number}`}</p>
-                        <p className="text-[12px] text-white/40 mt-0.5">
-                          {ep.aired ? new Date(ep.aired).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'TBA'}
-                        </p>
-                      </div>
-                      {ep.runtime ? <span className="text-[12px] text-white/35 shrink-0">{ep.runtime}m</span> : null}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {cast.length > 0 && (
-              <section className="flex flex-col gap-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40 flex items-center gap-2">
-                  <Users size={13} /> Top Cast
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                  {cast.map((person: any) => (
-                    <div key={person.id} className="flex items-center gap-3.5">
-                      {person.image ? (
-                        <img
-                          src={person.image}
-                          alt={person.personName}
-                          className="w-11 h-11 rounded-full object-cover border border-white/10 shrink-0"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#3a3a3e] to-[#1a1a1c] border border-white/10 shrink-0 flex items-center justify-center text-xs font-semibold text-white/50">
-                          {person.personName?.[0] ?? '?'}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-[13.5px] font-medium text-white/90 truncate">{person.personName}</p>
-                        <p className="text-[12px] text-white/40 truncate">{person.name}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {tags.length > 0 && (
-              <section className="flex flex-col gap-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/40 flex items-center gap-2">
-                  <Tag size={13} /> Themes & Elements
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag: string) => (
-                    <span key={tag} className="px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-2 border border-white/6 text-xs font-medium text-white/60 transition-colors">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-
-          <div className="lg:col-span-4">
-            <div className="rounded-[22px] bg-surface border border-white/8 p-6 flex flex-col gap-5 sticky top-24 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[15px] font-semibold tracking-tight">Your entry</h3>
-                {isSyncing && <Loader2 size={15} className="animate-spin text-white/40" />}
+        <div className="rounded-3xl overflow-hidden border border-white/8">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-4 px-4 py-3 border-b border-white/5 last:border-b-0">
+              <div className="w-7 h-3 rounded-full skeleton shrink-0" />
+              <div className="w-[92px] md:w-28 aspect-video rounded-xl skeleton shrink-0" />
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="h-3.5 w-1/2 rounded-full skeleton" />
+                <div className="h-3 w-24 rounded-full skeleton" />
               </div>
-
-              <ScoreBar score={userScore} onChange={(n) => handleTrack(undefined, n)} disabled={isSyncing} />
-
-              <div className="flex flex-col gap-2">
-                <span className="text-xs text-white/55">Status</span>
-                <StatusButtons status={status} onChange={(s) => handleTrack(s)} />
-              </div>
-
-              {addedAt && (
-                <div className="flex items-center justify-between pt-4 border-t border-white/8 text-[13px]">
-                  <span className="flex items-center gap-1.5 text-white/50"><CalendarPlus size={13} /> Added</span>
-                  <span className="font-medium">
-                    {new Date(addedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </span>
-                </div>
-              )}
-
-              {status && (
-                <button
-                  onClick={handleRemove}
-                  disabled={isSyncing}
-                  className="text-center text-xs font-medium text-white/35 hover:text-red-400 transition-colors -mt-1 disabled:opacity-50"
-                >
-                  Remove from Collection
-                </button>
-              )}
-
-              {!localStorage.getItem('token') && (
-                <Link
-                  to="/login"
-                  className="text-center text-xs font-medium text-white/45 hover:text-white/70 transition-colors -mt-1"
-                >
-                  Sign in to save your progress
-                </Link>
-              )}
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
   );
-};
+}

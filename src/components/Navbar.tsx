@@ -1,100 +1,165 @@
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Compass, Library, Search, LogOut } from 'lucide-react';
+import { Compass, Library, LogOut, Search, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_LINKS = [
   { to: '/discover', label: 'Discover', icon: Compass },
   { to: '/watchlist', label: 'Collection', icon: Library },
-  { to: '/search', label: 'Search', icon: Search },
 ];
 
-export const Navbar = () => {
+interface NavbarProps {
+  onOpenSearch: () => void;
+}
+
+export function Navbar({ onOpenSearch }: NavbarProps) {
   const { token, user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [condensed, setCondensed] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Over the hero the bar is nearly invisible; once the page scrolls under it,
+  // it takes on its full material so the content passing behind stays readable.
+  useEffect(() => {
+    const onScroll = () => setCondensed(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
+    const onClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  // Following a link inside the menu closes it below; this is for the browser's
+  // own back and forward buttons, which never touch the menu.
+  useEffect(() => {
+    const close = () => setMenuOpen(false);
+    window.addEventListener('popstate', close);
+    return () => window.removeEventListener('popstate', close);
   }, []);
 
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] px-4 md:px-8 py-4">
-      <div className="w-1/5 min-w-fit mx-auto flex items-center justify-between gap-24 bg-surface/62 backdrop-blur-2xl [backdrop-filter:blur(28px)_saturate(180%)] border border-white/10 px-4 py-2.5 rounded-full shadow-[0_12px_40px_rgba(0,0,0,0.5)] whitespace-nowrap">
-
-        <Link to="/" className="shrink-0">
-          <span className="text-[18px] font-semibold tracking-tight text-white">trakr</span>
+    <header className="fixed top-0 inset-x-0 z-[150] flex justify-center px-4 pt-3 md:pt-4 pointer-events-none">
+      <nav
+        className={`pointer-events-auto flex items-center gap-2 rounded-full transition-all duration-500 ease-apple ${
+          condensed
+            ? 'glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 py-2'
+            : 'bg-transparent border border-transparent px-3 py-2.5'
+        }`}
+      >
+        <Link
+          to="/"
+          className="px-2 text-[17px] font-semibold tracking-tight text-white hover:opacity-80 transition-opacity duration-300"
+        >
+          trakr
         </Link>
 
-        <div className="flex items-center gap-2.5">
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((link) => {
-              const active = location.pathname.startsWith(link.to);
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  title={link.label}
-                  aria-label={link.label}
-                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
-                    active ? 'bg-white/11 text-white' : 'text-white/55 hover:text-white'
-                  }`}
-                >
-                  <link.icon size={17} />
-                </Link>
-              );
-            })}
-          </div>
+        <span aria-hidden className="hidden md:block w-px h-4 bg-white/12 mx-1" />
 
-          {token ? (
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="w-9 h-9 rounded-full bg-gradient-to-br from-[#3a3a3e] to-[#232326] border border-white/14 flex items-center justify-center text-[13px] font-semibold text-white/85 hover:border-white/30 transition focus:outline-none"
+        <div className="hidden md:flex items-center gap-0.5">
+          {NAV_LINKS.map((link) => {
+            const active = location.pathname.startsWith(link.to);
+            return (
+              <Link
+                key={link.to}
+                to={link.to}
+                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-colors duration-300 ease-apple ${
+                  active ? 'text-white' : 'text-white/50 hover:text-white/85'
+                }`}
               >
-                {initial}
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-3 w-52 bg-surface/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] py-2 animate-fade-up">
-                  <div className="px-4 py-2 mb-1">
-                    <p className="text-[10px] uppercase tracking-widest text-white/35 font-semibold">Account</p>
-                    <p className="text-sm text-white/85 font-medium mt-0.5 truncate">{user?.username}</p>
-                  </div>
-                  <div className="h-px bg-white/8 mx-2 mb-1" />
-                  <button
-                    onClick={() => {
-                      logout();
-                      setIsDropdownOpen(false);
-                      navigate('/');
-                    }}
-                    className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition"
-                  >
-                    <LogOut size={15} /> Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="bg-accent-strong text-white text-[13px] font-semibold px-4 py-2 rounded-full hover:brightness-110 transition shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
-            >
-              Sign In
-            </Link>
-          )}
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-full bg-white/10 border border-white/8"
+                  />
+                )}
+                <link.icon size={15} className="relative" />
+                <span className="relative">{link.label}</span>
+              </Link>
+            );
+          })}
         </div>
-      </div>
-    </nav>
+
+        <button
+          onClick={onOpenSearch}
+          aria-label="Search"
+          className="flex items-center gap-2 pl-3 pr-2.5 md:pr-2 py-1.5 rounded-full bg-white/7 hover:bg-white/13 border border-white/8 text-white/55 hover:text-white transition-colors duration-300 ease-apple"
+        >
+          <Search size={15} />
+          <span className="hidden lg:block text-[13px] font-medium">Search</span>
+          <kbd className="hidden lg:flex items-center h-5 px-1.5 rounded-md bg-white/8 border border-white/8 text-[10.5px] font-sans font-medium text-white/45">
+            {isMac ? '⌘K' : 'Ctrl K'}
+          </kbd>
+        </button>
+
+        {token ? (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Account"
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-deep border border-white/15 flex items-center justify-center text-[13px] font-semibold text-white transition-transform duration-300 ease-apple hover:scale-105 active:scale-95"
+            >
+              {initial}
+            </button>
+
+            {menuOpen && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-3 w-56 rounded-2xl glass-panel shadow-[0_20px_50px_rgba(0,0,0,0.65)] p-1.5 animate-scale-in origin-top-right"
+              >
+                <div className="px-3 py-2.5">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/30 font-semibold">
+                    Signed in as
+                  </p>
+                  <p className="text-[14px] text-white font-medium mt-1 truncate">
+                    {user?.username}
+                  </p>
+                </div>
+                <div aria-hidden className="h-px bg-white/8 my-1" />
+                <Link
+                  to="/watchlist"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-[13.5px] text-white/80 hover:bg-white/8 hover:text-white transition-colors duration-200"
+                >
+                  <Library size={15} /> My collection
+                </Link>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    logout();
+                    setMenuOpen(false);
+                    navigate('/');
+                  }}
+                  className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-[13.5px] text-red-300 hover:bg-red-500/12 transition-colors duration-200"
+                >
+                  <LogOut size={15} /> Sign out
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            className="flex items-center gap-1.5 bg-white text-black text-[13px] font-semibold pl-3 pr-3.5 py-2 rounded-full hover:bg-white/90 transition-all duration-300 ease-apple active:scale-95"
+          >
+            <User size={14} />
+            Sign in
+          </Link>
+        )}
+      </nav>
+    </header>
   );
-};
+}
