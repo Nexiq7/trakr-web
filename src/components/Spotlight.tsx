@@ -42,8 +42,7 @@ function useSlideDetails(type: MediaType, id: string | number) {
  * The rotating feature at the top of the signed-in home page.
  *
  * Built like a streaming app's hero rather than a card: the title's own
- * background art fills the frame, its logo sits over it, and the rest of the
- * rotation waits along the bottom as wide cards you can jump to. Save and
+ * background art fills the frame and its logo sits over it. Save and
  * Details are right in the slide, so discovering and collecting stay one
  * gesture.
  */
@@ -94,7 +93,7 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
         />
       ))}
 
-      {/* Scrims: dark behind the copy on the left, a floor for the card row,
+      {/* Scrims: dark behind the copy on the left, a floor along the bottom,
           and a band under the navbar, which is transparent at the top. */}
       <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/45 to-black/5" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
@@ -112,54 +111,37 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
         />
       )}
 
-      <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-12 flex flex-col justify-end gap-10">
+      <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
         <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
 
         {slides.length > 1 && (
-          <>
-            <div className="hidden md:grid grid-cols-5 gap-3 lg:gap-4">
-              {slides.map((slide, slideIndex) => (
-                <UpNextCard
-                  key={slide.id}
-                  type={type}
-                  slide={slide}
-                  active={slideIndex === index}
-                  animate={!reducedMotion}
-                  progressKey={index}
-                  playState={playState}
-                  onSelect={() => setIndex(slideIndex)}
-                />
-              ))}
-            </div>
-
-            <div className="md:hidden flex items-center gap-2">
-              {slides.map((slide, slideIndex) => (
-                <button
-                  key={slide.id}
-                  onClick={() => setIndex(slideIndex)}
-                  aria-label={`Show ${slide.name}`}
-                  aria-current={slideIndex === index}
-                  className="h-6 flex items-center"
+          <div className="flex items-center gap-2">
+            {slides.map((slide, slideIndex) => (
+              <button
+                key={slide.id}
+                onClick={() => setIndex(slideIndex)}
+                aria-label={`Show ${slide.name}`}
+                aria-current={slideIndex === index}
+                className="h-6 flex items-center"
+              >
+                <span
+                  className={`block h-[3px] rounded-full overflow-hidden transition-all duration-500 ease-apple ${
+                    slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
+                  }`}
                 >
-                  <span
-                    className={`block h-[3px] rounded-full overflow-hidden transition-all duration-500 ease-apple ${
-                      slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20'
-                    }`}
-                  >
-                    {slideIndex === index && (
-                      <span
-                        key={index}
-                        className={`block h-full w-full bg-white origin-left ${
-                          reducedMotion ? '' : 'animate-progress'
-                        }`}
-                        style={{ animationPlayState: playState }}
-                      />
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
+                  {slideIndex === index && (
+                    <span
+                      key={index}
+                      className={`block h-full w-full bg-white origin-left ${
+                        reducedMotion ? '' : 'animate-progress'
+                      }`}
+                      style={{ animationPlayState: playState }}
+                    />
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </section>
@@ -308,73 +290,8 @@ function SlideCopy({ slide, type, rank }: { slide: Title; type: MediaType; rank:
           {saved ? <Check size={16} strokeWidth={3} /> : <Bookmark size={15} />}
           {saved ? 'In collection' : 'Save'}
         </button>
-
       </div>
     </div>
-  );
-}
-
-function UpNextCard({
-  type,
-  slide,
-  active,
-  animate,
-  progressKey,
-  playState,
-  onSelect,
-}: {
-  type: MediaType;
-  slide: Title;
-  active: boolean;
-  animate: boolean;
-  progressKey: number;
-  playState: 'paused' | 'running';
-  onSelect: () => void;
-}) {
-  const details = useSlideDetails(type, slide.id);
-  const backdrop = pickBackdrop(details);
-
-  return (
-    <button
-      onClick={onSelect}
-      aria-label={`Show ${slide.name}`}
-      aria-current={active}
-      className="group text-left min-w-0"
-    >
-      <div
-        className={`relative aspect-video rounded-xl overflow-hidden border transition-all duration-500 ease-apple ${
-          active
-            ? 'border-white/60 shadow-[0_12px_36px_rgba(0,0,0,0.6)]'
-            : 'border-white/10 opacity-60 group-hover:opacity-100 group-hover:border-white/30'
-        }`}
-      >
-        <Artwork
-          image={backdrop ?? slide.image}
-          alt=""
-          kind={backdrop ? 'backdrop' : 'poster'}
-          displayWidth={280}
-          className="absolute inset-0"
-          imgClassName="transition-transform duration-700 ease-apple group-hover:scale-105"
-        />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-        {active && (
-          <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/20">
-            <span
-              key={progressKey}
-              className={`block h-full w-full bg-white origin-left ${animate ? 'animate-progress' : ''}`}
-              style={{ animationPlayState: playState }}
-            />
-          </span>
-        )}
-      </div>
-      <p
-        className={`mt-2 text-[12.5px] font-medium truncate transition-colors duration-300 ${
-          active ? 'text-white' : 'text-white/45 group-hover:text-white/80'
-        }`}
-      >
-        {slide.name}
-      </p>
-    </button>
   );
 }
 
@@ -383,7 +300,7 @@ function SpotlightSkeleton() {
     <section className="relative w-full h-[round(down,86vh,1px)] min-h-[620px] max-h-[920px] overflow-hidden">
       <div aria-hidden className="absolute inset-0 art-placeholder art-loading opacity-60" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60" />
-      <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-12 flex flex-col justify-end gap-10">
+      <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
         <div className="max-w-xl flex flex-col gap-4">
           <div className="h-6 w-44 rounded-md skeleton" />
           <div className="h-24 w-80 rounded-2xl skeleton" />
@@ -396,11 +313,6 @@ function SpotlightSkeleton() {
             <div className="h-12 w-32 rounded-full skeleton" />
             <div className="h-12 w-28 rounded-full skeleton" />
           </div>
-        </div>
-        <div className="hidden md:grid grid-cols-5 gap-3 lg:gap-4">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="aspect-video rounded-xl skeleton" />
-          ))}
         </div>
       </div>
     </section>
