@@ -134,9 +134,9 @@ export function Discover() {
         </header>
       </div>
 
-      {/* Sticky so the controls stay reachable however far you scroll — this is
-          a page you're meant to scroll a long way down. */}
-      <div className="sticky top-[72px] md:top-[76px] z-[90] py-3 -my-1">
+      {/* Stays where it sits in the page rather than following the scroll, so
+          it never covers the posters. */}
+      <div className="py-3 -my-1">
         <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16">
           <div className="inline-flex max-w-full flex-wrap items-center gap-2.5 p-2 rounded-[20px] glass-panel shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
             <Segmented
