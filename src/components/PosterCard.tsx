@@ -1,10 +1,17 @@
 import { Link } from 'react-router-dom';
-import { Bookmark, Check, Star } from 'lucide-react';
+import { Bookmark, Star } from 'lucide-react';
 import { Artwork } from './Artwork';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useTrackSheet } from '../context/TrackSheetContext';
 import { prefetchImage, resolveImage } from '../lib/images';
 import type { MediaType } from '../lib/tvdb';
+
+const STATUS_TEXT: Record<string, string> = {
+  watching: 'Watching',
+  planning: 'Planned',
+  completed: 'Completed',
+  dropped: 'Dropped',
+};
 
 interface PosterCardProps {
   type: MediaType;
@@ -47,6 +54,20 @@ export function PosterCard({
   const entry = entryFor(type, id);
   const saved = entry !== undefined;
 
+  // Status and score belong with the title, not stamped over the artwork. The
+  // poster stays clean; the line under it says where the title sits for you.
+  const caption: React.ReactNode[] = [];
+  if (statusLabel) caption.push(STATUS_TEXT[statusLabel] ?? statusLabel);
+  else if (subtitle) caption.push(subtitle);
+  if (showUserScore && entry != null && entry.score > 0) {
+    caption.push(
+      <span className="flex items-center gap-1 text-white/60">
+        <Star size={10} fill="currentColor" className="text-white/40" />
+        {entry.score}
+      </span>,
+    );
+  }
+
   return (
     <div className="group relative w-full">
       <Link
@@ -66,24 +87,22 @@ export function PosterCard({
             imgClassName="transition-transform duration-[900ms] ease-apple group-hover:scale-[1.08]"
           />
 
-          {statusLabel && (
-            <span className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded-md bg-black/65 backdrop-blur-md border border-white/10 text-[9px] font-semibold uppercase tracking-wider text-white/80">
-              {statusLabel}
-            </span>
-          )}
-
-          {showUserScore && entry != null && entry.score > 0 && (
-            <span className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/65 backdrop-blur-md border border-white/10 text-[11px] font-semibold text-accent-soft">
-              <Star size={10} fill="currentColor" /> {entry.score}
-            </span>
-          )}
         </div>
 
         <div className="min-w-0">
           <h3 className="text-[13px] font-medium text-white/90 tracking-tight truncate group-hover:text-white transition-colors duration-300">
             {name}
           </h3>
-          {subtitle && <p className="text-[11.5px] text-white/45 mt-0.5 truncate">{subtitle}</p>}
+          {caption.length > 0 && (
+            <p className="flex items-center gap-1.5 text-[11.5px] text-white/45 mt-0.5 truncate">
+              {caption.map((part, index) => (
+                <span key={index} className="flex items-center gap-1.5 shrink-0">
+                  {index > 0 && <span aria-hidden className="w-0.5 h-0.5 rounded-full bg-white/30" />}
+                  {part}
+                </span>
+              ))}
+            </p>
+          )}
         </div>
       </Link>
 
@@ -95,11 +114,11 @@ export function PosterCard({
         aria-label={saved ? `Edit ${name} in your collection` : `Save ${name} to your collection`}
         className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border backdrop-blur-md transition-all duration-300 ease-apple active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 ${
           saved
-            ? 'bg-accent-strong text-white border-white/15 opacity-100'
-            : 'bg-black/55 text-white/80 border-white/12 hover:bg-black/80 hover:text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100'
+            ? 'bg-black/50 text-white border-white/12 hover:bg-black/75 opacity-100'
+            : 'bg-black/50 text-white/80 border-white/12 hover:bg-black/75 hover:text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100'
         }`}
       >
-        {saved ? <Check size={15} strokeWidth={3} /> : <Bookmark size={14} />}
+        <Bookmark size={14} fill={saved ? 'currentColor' : 'none'} />
       </button>
     </div>
   );

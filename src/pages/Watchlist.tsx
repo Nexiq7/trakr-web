@@ -1,17 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Bookmark,
-  CheckCircle2,
-  LayoutGrid,
-  Library,
-  PlayCircle,
-  Search as SearchIcon,
-  Sparkles,
-  Star,
-  XCircle,
-  type LucideIcon,
-} from 'lucide-react';
+import { Library, Search as SearchIcon, Sparkles, Star, type LucideIcon } from 'lucide-react';
 import { PosterCard, PosterCardSkeleton } from '../components/PosterCard';
 import { Segmented } from '../components/ui/Segmented';
 import { useAuth } from '../context/AuthContext';
@@ -21,13 +10,25 @@ import { idFromMediaKey, type MediaType, type WatchStatus, type WatchlistEntry }
 type Tab = 'all' | WatchStatus;
 type SortId = 'recent' | 'score' | 'name';
 
-const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
-  { id: 'all', label: 'All', icon: LayoutGrid },
-  { id: 'watching', label: 'Watching', icon: PlayCircle },
-  { id: 'planning', label: 'Planned', icon: Bookmark },
-  { id: 'completed', label: 'Completed', icon: CheckCircle2 },
-  { id: 'dropped', label: 'Dropped', icon: XCircle },
+type Kind = 'all' | MediaType;
+
+const KINDS: { id: Kind; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'series', label: 'Series' },
+  { id: 'movie', label: 'Movies' },
 ];
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'all', label: 'Everything' },
+  { id: 'watching', label: 'Watching' },
+  { id: 'planning', label: 'Planned' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'dropped', label: 'Dropped' },
+];
+
+function kindOf(entry: WatchlistEntry): MediaType {
+  return entry.type === 'movie' ? 'movie' : 'series';
+}
 
 const SORTS: { id: SortId; label: string }[] = [
   { id: 'recent', label: 'Recent' },
@@ -57,23 +58,31 @@ export function Watchlist() {
   const { token } = useAuth();
   const { entries, isLoading } = useWatchlist();
 
+  const [kind, setKind] = useState<Kind>('all');
   const [tab, setTab] = useState<Tab>('all');
   const [sort, setSort] = useState<SortId>('recent');
   const [filter, setFilter] = useState('');
 
+  // Status counts follow the type filter, so "Watching 3" under Movies means
+  // three movies.
+  const ofKind = useMemo(
+    () => (kind === 'all' ? entries : entries.filter((entry) => kindOf(entry) === kind)),
+    [entries, kind],
+  );
+
   const counts = useMemo(() => {
     const base: Record<Tab, number> = {
-      all: entries.length,
+      all: ofKind.length,
       watching: 0,
       planning: 0,
       completed: 0,
       dropped: 0,
     };
-    for (const entry of entries) {
+    for (const entry of ofKind) {
       if (entry.status in base) base[entry.status] += 1;
     }
     return base;
-  }, [entries]);
+  }, [ofKind]);
 
   const scored = entries.filter((entry) => (entry.score ?? 0) > 0);
   const averageScore =
@@ -83,12 +92,12 @@ export function Watchlist() {
 
   const visible = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    const byTab = tab === 'all' ? entries : entries.filter((entry) => entry.status === tab);
+    const byTab = tab === 'all' ? ofKind : ofKind.filter((entry) => entry.status === tab);
     const byName = needle
       ? byTab.filter((entry) => (entry.details?.name ?? '').toLowerCase().includes(needle))
       : byTab;
     return sortEntries(byName, sort);
-  }, [entries, tab, sort, filter]);
+  }, [ofKind, tab, sort, filter]);
 
   if (!token) {
     return (
@@ -134,11 +143,7 @@ export function Watchlist() {
 
         {isLoading ? (
           <>
-            <div className="flex gap-2 mb-8">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="h-9 w-28 rounded-full skeleton" />
-              ))}
-            </div>
+            <div className="h-[54px] w-full max-w-[980px] rounded-[20px] skeleton mb-8" />
             <Grid>
               {Array.from({ length: 12 }).map((_, index) => (
                 <PosterCardSkeleton key={index} />
@@ -163,50 +168,34 @@ export function Watchlist() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-3 mb-8">
-              <div className="flex overflow-x-auto scrollbar-hide gap-1.5 -mx-1 px-1">
-                {TABS.map((option) => {
-                  const active = tab === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => setTab(option.id)}
-                      aria-pressed={active}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all duration-300 ease-apple active:scale-95 ${
-                        active
-                          ? 'bg-white/12 text-white border border-white/10'
-                          : 'text-white/50 hover:text-white border border-transparent'
-                      }`}
-                    >
-                      <option.icon size={14} />
-                      {option.label}
-                      <span
-                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          active ? 'bg-white/15 text-white' : 'bg-white/8 text-white/40'
-                        }`}
-                      >
-                        {counts[option.id]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex items-center gap-3 ml-auto">
+            {/* The same glass control bar as Discover, sticky for the same reason:
+                a long collection is scrolled, and the filters should come along. */}
+            <div className="sticky top-[72px] md:top-[76px] z-[90] py-3 -my-3 mb-5">
+              <div className="inline-flex max-w-full flex-wrap items-center gap-2.5 p-2 rounded-[20px] glass-panel shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                <Segmented options={KINDS} value={kind} onChange={setKind} label="Media type" />
+                <Segmented
+                  options={TABS.map((option) => ({
+                    id: option.id,
+                    label: `${option.label} ${counts[option.id]}`,
+                  }))}
+                  value={tab}
+                  onChange={setTab}
+                  label="Status"
+                />
+                <Segmented options={SORTS} value={sort} onChange={setSort} label="Sort collection" />
                 <label className="relative">
                   <SearchIcon
                     size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none"
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none"
                   />
                   <input
                     value={filter}
                     onChange={(event) => setFilter(event.target.value)}
                     placeholder="Filter titles"
                     aria-label="Filter your collection"
-                    className="w-[150px] focus:w-[200px] bg-white/6 border border-white/8 focus:border-accent/45 rounded-full pl-8 pr-3 py-2 text-[13px] text-white placeholder:text-white/30 outline-none transition-all duration-400 ease-apple"
+                    className="w-[150px] focus:w-[190px] bg-white/6 border border-white/8 focus:border-white/20 rounded-full pl-9 pr-3.5 py-2 text-[13px] text-white placeholder:text-white/40 outline-none transition-all duration-300 ease-apple"
                   />
                 </label>
-                <Segmented options={SORTS} value={sort} onChange={setSort} label="Sort collection" />
               </div>
             </div>
 
@@ -219,7 +208,7 @@ export function Watchlist() {
             ) : (
               <Grid>
                 {visible.map((entry, index) => {
-                  const type: MediaType = entry.type === 'movie' ? 'movie' : 'series';
+                  const type = kindOf(entry);
                   return (
                     <PosterCard
                       key={entry.mediaId}
