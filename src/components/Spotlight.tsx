@@ -301,7 +301,7 @@ function SlideCopy({ slide, type, rank }: { slide: Title; type: MediaType; rank:
           }
           className={`flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-semibold transition-all duration-300 ease-apple active:scale-95 border ${
             saved
-              ? 'bg-accent text-white border-white/15 shadow-[0_8px_28px_rgba(124,92,255,0.4)]'
+              ? 'bg-accent-strong text-white border-white/10'
               : 'bg-white/12 text-white border-white/15 hover:bg-white/20 backdrop-blur-xl'
           }`}
         >

@@ -110,7 +110,7 @@ export function TrackSheetProvider({ children }: { children: React.ReactNode }) 
                       aria-pressed={active}
                       className={`flex items-center gap-2.5 px-3.5 py-3 rounded-2xl text-[13.5px] font-medium transition-all duration-300 ease-apple active:scale-[0.97] ${
                         active
-                          ? 'bg-accent-strong text-white shadow-[0_6px_20px_rgba(107,75,238,0.35)]'
+                          ? 'bg-accent-strong text-white'
                           : 'bg-white/6 text-white/70 hover:bg-white/12 hover:text-white'
                       }`}
                     >

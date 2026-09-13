@@ -242,7 +242,7 @@ export function Details() {
                   onClick={track}
                   className={`flex items-center gap-2 px-5 py-3 rounded-full text-[14px] font-semibold transition-all duration-300 ease-apple active:scale-95 ${
                     saved
-                      ? 'bg-accent text-white shadow-[0_8px_28px_rgba(124,92,255,0.4)]'
+                      ? 'bg-accent-strong text-white'
                       : 'bg-white text-black hover:bg-white/90 shadow-[0_8px_28px_rgba(0,0,0,0.5)]'
                   }`}
                 >

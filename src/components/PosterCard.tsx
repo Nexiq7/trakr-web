@@ -95,7 +95,7 @@ export function PosterCard({
         aria-label={saved ? `Edit ${name} in your collection` : `Save ${name} to your collection`}
         className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center border backdrop-blur-md transition-all duration-300 ease-apple active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 ${
           saved
-            ? 'bg-accent text-white border-white/20 opacity-100 shadow-[0_4px_14px_rgba(124,92,255,0.5)]'
+            ? 'bg-accent-strong text-white border-white/15 opacity-100'
             : 'bg-black/55 text-white/80 border-white/12 hover:bg-black/80 hover:text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100'
         }`}
       >
