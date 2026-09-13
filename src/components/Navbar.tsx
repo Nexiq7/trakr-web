@@ -73,7 +73,11 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13.5px] font-medium transition-colors duration-300 ease-apple ${
+                // Icon-only, so the name has to come from somewhere: the label is
+                // announced to screen readers and shown as a tooltip on hover.
+                aria-label={link.label}
+                title={link.label}
+                className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
                   active ? 'text-white' : 'text-white/50 hover:text-white/85'
                 }`}
               >
@@ -83,8 +87,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                     className="absolute inset-0 rounded-full bg-white/10 border border-white/8"
                   />
                 )}
-                <link.icon size={15} className="relative" />
-                <span className="relative">{link.label}</span>
+                <link.icon size={17} className="relative" />
               </Link>
             );
           })}
@@ -93,13 +96,11 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
         <button
           onClick={onOpenSearch}
           aria-label="Search"
-          className="flex items-center gap-2 pl-3 pr-2.5 md:pr-2 py-1.5 rounded-full bg-white/7 hover:bg-white/13 border border-white/8 text-white/55 hover:text-white transition-colors duration-300 ease-apple"
+          aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
+          title={`Search (${isMac ? '⌘K' : 'Ctrl K'})`}
+          className="w-9 h-9 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors duration-300 ease-apple"
         >
-          <Search size={15} />
-          <span className="hidden lg:block text-[13px] font-medium">Search</span>
-          <kbd className="hidden lg:flex items-center h-5 px-1.5 rounded-md bg-white/8 border border-white/8 text-[10.5px] font-sans font-medium text-white/45">
-            {isMac ? '⌘K' : 'Ctrl K'}
-          </kbd>
+          <Search size={17} />
         </button>
 
         {token ? (
