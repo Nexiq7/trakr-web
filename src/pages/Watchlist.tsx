@@ -202,9 +202,10 @@ export function Watchlist() {
           </div>
         ) : (
           <>
-            {/* The same glass control bar as Discover, sticky for the same reason:
-                a long collection is scrolled, and the filters should come along. */}
-            <div className="sticky top-[72px] md:top-[76px] z-[90] py-3 -my-3 mb-5">
+            {/* The same glass control bar as Discover, but it stays in place in the
+                page rather than following the scroll, so it never sits over
+                the rows. */}
+            <div className="mb-5">
               <div className="inline-flex max-w-full flex-wrap items-center gap-2.5 p-2 rounded-[20px] glass-panel shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
                 <Segmented options={KINDS} value={kind} onChange={setKind} label="Media type" />
                 {/* Five options with counts outgrow a phone's width; the group
