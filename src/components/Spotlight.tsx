@@ -78,8 +78,6 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   return (
     <section
       className="relative w-full h-[round(down,86vh,1px)] min-h-[620px] max-h-[920px] overflow-hidden"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
@@ -112,37 +110,54 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
       )}
 
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
-        <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
+        {/* Only the copy, buttons and dots pause the rotation. The hero covers
+            most of the screen, so pausing on any hover stopped it nearly all the
+            time; this way it waits only while someone is reading or reaching
+            for a control. */}
+        <div
+          className="flex flex-col gap-8 w-fit max-w-full"
+          onPointerEnter={() => setPaused(true)}
+          onPointerLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
+          }}
+        >
+          <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
 
-        {slides.length > 1 && (
-          <div className="flex items-center gap-2">
-            {slides.map((slide, slideIndex) => (
-              <button
-                key={slide.id}
-                onClick={() => setIndex(slideIndex)}
-                aria-label={`Show ${slide.name}`}
-                aria-current={slideIndex === index}
-                className="h-6 flex items-center"
-              >
-                <span
-                  className={`block h-[3px] rounded-full overflow-hidden transition-all duration-500 ease-apple ${
-                    slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
-                  }`}
+          {slides.length > 1 && (
+            <div className="flex items-center gap-2">
+              {slides.map((slide, slideIndex) => (
+                <button
+                  key={slide.id}
+                  onClick={() => setIndex(slideIndex)}
+                  aria-label={`Show ${slide.name}`}
+                  aria-current={slideIndex === index}
+                  className="h-6 flex items-center"
                 >
-                  {slideIndex === index && (
-                    <span
-                      key={index}
-                      className={`block h-full w-full bg-white origin-left ${
-                        reducedMotion ? '' : 'animate-progress'
-                      }`}
-                      style={{ animationPlayState: playState }}
-                    />
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+                  <span
+                    className={`relative block h-[3px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
+                      slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
+                    }`}
+                  >
+                    {slideIndex === index && (
+                      // A fixed 40px bar rather than one sized to the track: the
+                      // track widens as the slide starts, and a bar scaled against
+                      // a growing width jumps instead of filling evenly.
+                      <span
+                        key={index}
+                        className={`absolute inset-y-0 left-0 w-10 bg-white origin-left ${
+                          reducedMotion ? '' : 'animate-progress'
+                        }`}
+                        style={{ animationPlayState: playState }}
+                      />
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
