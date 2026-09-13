@@ -66,7 +66,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
 
         <span aria-hidden className="hidden md:block w-px h-4 bg-white/12 mx-1" />
 
-        <div className="hidden md:flex items-center gap-0.5">
+        <div className="hidden md:flex items-center gap-2">
           {NAV_LINKS.map((link) => {
             const active = location.pathname.startsWith(link.to);
             return (
@@ -98,7 +98,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
           aria-label="Search"
           aria-keyshortcuts={isMac ? 'Meta+K' : 'Control+K'}
           title={`Search (${isMac ? '⌘K' : 'Ctrl K'})`}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors duration-300 ease-apple"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-white/50 hover:text-white  transition-colors duration-300 ease-apple"
         >
           <Search size={17} />
         </button>
