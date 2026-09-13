@@ -300,7 +300,15 @@ export interface WatchlistEntry {
   status: WatchStatus;
   score: number;
   createdAt?: string;
-  details?: { name?: string; image?: string; year?: string; overview?: string };
+  /** The title's extended record, trimmed to what the collection renders. */
+  details?: {
+    name?: string;
+    image?: string;
+    year?: string;
+    overview?: string;
+    genres?: Genre[];
+    originalNetwork?: { name?: string };
+  } | null;
 }
 
 export const WATCHLIST_KEY = 'watchlist';
