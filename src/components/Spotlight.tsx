@@ -183,7 +183,10 @@ function SlideBackdrop({
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-0 transition-opacity duration-[1200ms] ease-apple ${
+      // Faded to transparent at the bottom edge, not just covered by a gradient:
+      // the zooming image sits on its own compositor layer and could leave a
+      // hairline under the scrim while the page animates in.
+      className={`absolute inset-0 [mask-image:linear-gradient(to_top,transparent,black_22%)] transition-opacity duration-[1200ms] ease-apple ${
         active ? 'opacity-100' : 'opacity-0'
       }`}
     >

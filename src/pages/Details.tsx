@@ -167,7 +167,11 @@ export function Details() {
           kind={backdrop ? 'backdrop' : 'poster'}
           displayWidth={1600}
           priority
-          className="absolute inset-0 w-full h-full"
+          // The zooming image is composited on its own layer, and while the page
+          // slides in, its clip and the gradient's round differently at the
+          // bottom edge — a hairline of image showed under the fade. Fading the
+          // image itself to transparent there leaves nothing to show through.
+          className="absolute inset-0 w-full h-full [mask-image:linear-gradient(to_top,transparent,black_22%)]"
           imgClassName="animate-subtle-zoom"
         />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/25" />
