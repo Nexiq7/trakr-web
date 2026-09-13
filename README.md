@@ -20,7 +20,7 @@
 
 ---
 
-Every other tracker feels like a spreadsheet with a poster grid bolted on. trakr doesn't. It's built around a single cinematic hero that rotates through what's actually trending, a genre-driven Discover page for when you don't know what you want yet, and a Collection that stays out of your way until you need it. Movie and show data comes straight from [TheTVDB](https://thetvdb.com/).
+Every other tracker feels like a spreadsheet with a poster grid bolted on. trakr doesn't. It's built around a cinematic spotlight that rotates through what's actually trending, a genre-driven Discover page for when you don't know what you want yet, and a Collection that stays out of your way until you need it. Saving is a single tap from any poster you can see. Movie and show data comes straight from [TheTVDB](https://thetvdb.com/).
 
 > **trakr is live at [trakr.lol](https://trakr.lol)** — that's the real thing,
 > and the fastest way to see it. This repository is the web client behind it.
@@ -31,12 +31,21 @@ Every other tracker feels like a spreadsheet with a poster grid bolted on. trakr
 
 ## ✨ Features
 
-- **Discover** — a rotating hero of what's trending, rails of trending and popular series and movies, and a full catalog you can filter by genre and sort by Trending / Popular / Newest / A–Z.
-- **Search** — results as you type, filterable to series or movies.
-- **Details** — season-by-season episodes, cast, artwork, trailers and the rest of the metadata for every title.
-- **Collection** — track anything as Watching, Plan to Watch, Completed or Dropped, score it out of 10, and pick up where you left off from the homepage.
+- **Save from anywhere** — every poster in the app carries its own save button, and it opens the same sheet for status and score. Building a collection never costs you your place.
+- **Quick search** — ⌘K (Ctrl-K) anywhere opens a search overlay with results as you type, arrow-key navigation and your recent searches.
+- **Discover** — a spotlight that rotates through what's trending, rails of trending and popular series and movies, and the full catalog filtered by genre and sorted by Trending / Popular / Newest / A–Z. Filters live in the URL, so any view is a link, and the grid pages in as you scroll.
+- **Details** — season-by-season episodes, cast, artwork, trailers, a share button, and a "More like this" rail drawn from the title's own genres.
+- **Collection** — track anything as Watching, Plan to Watch, Completed or Dropped, score it out of 10, filter and sort what you've saved, and pick up where you left off from the homepage.
 - **Works signed out** — browsing needs no account; signing in is only for tracking.
 - **Mobile-ready** — a glass navbar on desktop, a bottom tab bar on mobile, and grids that reflow to any screen.
+
+### Under the hood
+
+- **Artwork is loaded small.** TVDB serves every image at full size and at a `_t` thumbnail — 340×500 at ~45KB against 680×1000 at ~480KB. Cards ask for the thumbnail and describe both in `srcSet`, so a 24-poster grid pulls about a megabyte instead of eleven, and a wide display still gets the full file where it has the pixels to show it.
+- **Pages come back instantly.** Responses are cached in memory and served straight into the first render, then refreshed behind you when they're stale. Returning from a details page repaints the rails you left rather than flashing skeletons at you.
+- **Every load has a shape.** Skeletons mirror the layout they stand in for, so nothing jumps when the data lands.
+- **Writes are optimistic.** Saving, scoring and removing apply locally first and roll back if the server disagrees; removing offers an undo.
+- **Motion is opt-out.** Transitions, the drifting landing wall and the spotlight all collapse to their end state under `prefers-reduced-motion`.
 
 ## 📸 Screenshots
 

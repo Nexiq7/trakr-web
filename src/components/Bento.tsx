@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, Film, Library, Loader2, Search, Star, Unlock } from 'lucide-react';
-import { resolveImage } from './PosterCard';
+import { Compass, Library, Loader2, Search, Star, Unlock } from 'lucide-react';
+import { Artwork } from './Artwork';
 import { StatusButtons } from './StatusButtons';
 import { ScoreBar } from './ScoreBar';
 import { GithubIcon } from './GithubIcon';
@@ -20,7 +20,7 @@ const PREFERRED_GENRES = ['Drama', 'Science Fiction', 'Comedy', 'Thriller', 'Ani
 interface BentoPoster {
   id: string | number;
   name: string;
-  image: string;
+  image?: string;
 }
 
 interface Genre {
@@ -75,27 +75,13 @@ function Body({ children }: { children: ReactNode }) {
 
 /** Poster art with the hatch showing through whenever there's nothing to show. */
 function Thumb({ image, className = '' }: { image?: string | null; className?: string }) {
-  const src = resolveImage(image);
   return (
-    <div
-      className={`relative overflow-hidden art-placeholder border border-white/8 shrink-0 ${className}`}
-    >
-      <div aria-hidden className="absolute inset-0 flex items-center justify-center text-white/15">
-        <Film size={18} />
-      </div>
-      {src && (
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          // Artwork that 404s falls back to the hatch rather than a broken glyph.
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-          }}
-          className="relative w-full h-full object-cover"
-        />
-      )}
-    </div>
+    <Artwork
+      image={image}
+      alt=""
+      displayWidth={120}
+      className={`border border-white/8 shrink-0 ${className}`}
+    />
   );
 }
 
