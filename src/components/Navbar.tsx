@@ -110,7 +110,7 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="Account"
-              className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-deep border border-white/15 flex items-center justify-center text-[13px] font-semibold text-white transition-transform duration-300 ease-apple hover:scale-105 active:scale-95"
+              className="w-7 h-7 rounded-full bg-gradient-to-br from-accent to-accent-deep border border-white/15 flex items-center justify-center text-[11.5px] font-semibold text-white transition-transform duration-300 ease-apple hover:scale-105 active:scale-95"
             >
               {initial}
             </button>
