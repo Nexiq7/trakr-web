@@ -112,7 +112,12 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
               aria-label="Account"
               className="w-7 h-7 rounded-full bg-gradient-to-br from-accent to-accent-deep border border-white/15 flex items-center justify-center text-[11.5px] font-semibold text-white transition-transform duration-300 ease-apple hover:scale-105 active:scale-95"
             >
-              {initial}
+              {/* Flex centring centres the line box, which leaves room for
+                  ascenders and descenders a capital doesn't use. Trimming the box
+                  to cap height and baseline centres the letter itself. */}
+              <span className="block leading-none [text-box:trim-both_cap_alphabetic]">
+                {initial}
+              </span>
             </button>
 
             {menuOpen && (
