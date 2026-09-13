@@ -50,7 +50,7 @@ export function LandingHero({ posters }: LandingHeroProps) {
   }, [posters]);
 
   return (
-    <section className="relative w-full overflow-hidden flex items-center justify-center px-6 pt-32 pb-20 min-h-[640px] md:min-h-[92vh]">
+    <section className="relative w-full overflow-hidden flex items-center justify-center px-6 pt-32 pb-20 min-h-[640px] md:min-h-[round(down,92vh,1px)]">
       {columns.length > 0 && (
         <div
           aria-hidden

@@ -78,7 +78,7 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
 
   return (
     <section
-      className="relative w-full h-[86vh] min-h-[620px] max-h-[920px] overflow-hidden"
+      className="relative w-full h-[round(down,86vh,1px)] min-h-[620px] max-h-[920px] overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
@@ -183,10 +183,7 @@ function SlideBackdrop({
   return (
     <div
       aria-hidden={!active}
-      // Faded to transparent at the bottom edge, not just covered by a gradient:
-      // the zooming image sits on its own compositor layer and could leave a
-      // hairline under the scrim while the page animates in.
-      className={`absolute inset-0 [mask-image:linear-gradient(to_top,transparent,black_22%)] transition-opacity duration-[1200ms] ease-apple ${
+      className={`absolute inset-0 transition-opacity duration-[1200ms] ease-apple ${
         active ? 'opacity-100' : 'opacity-0'
       }`}
     >
@@ -383,7 +380,7 @@ function UpNextCard({
 
 function SpotlightSkeleton() {
   return (
-    <section className="relative w-full h-[86vh] min-h-[620px] max-h-[920px] overflow-hidden">
+    <section className="relative w-full h-[round(down,86vh,1px)] min-h-[620px] max-h-[920px] overflow-hidden">
       <div aria-hidden className="absolute inset-0 art-placeholder art-loading opacity-60" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60" />
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-12 flex flex-col justify-end gap-10">

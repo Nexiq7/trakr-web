@@ -160,18 +160,18 @@ export function Details() {
 
   return (
     <div className="min-h-screen">
-      <header className="relative min-h-[540px] md:h-[70vh] md:min-h-[560px] w-full overflow-hidden">
+      {/* Heights are rounded to whole pixels. A plain 70vh often lands on a half
+          pixel, and the backdrop — drawn on its own layer while it fades in on a
+          first visit — rounds that edge differently from the page, leaving a
+          one-pixel line under the hero. */}
+      <header className="relative min-h-[540px] md:h-[round(down,70vh,1px)] md:min-h-[560px] w-full overflow-hidden">
         <Artwork
           image={backdrop ?? media.image}
           alt=""
           kind={backdrop ? 'backdrop' : 'poster'}
           displayWidth={1600}
           priority
-          // The zooming image is composited on its own layer, and while the page
-          // slides in, its clip and the gradient's round differently at the
-          // bottom edge — a hairline of image showed under the fade. Fading the
-          // image itself to transparent there leaves nothing to show through.
-          className="absolute inset-0 w-full h-full [mask-image:linear-gradient(to_top,transparent,black_22%)]"
+          className="absolute inset-0 w-full h-full"
           imgClassName="animate-subtle-zoom"
         />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/25" />
@@ -470,7 +470,7 @@ function SectionLabel({
 function DetailsSkeleton() {
   return (
     <div className="min-h-screen">
-      <div className="relative min-h-[540px] md:h-[70vh] md:min-h-[560px] overflow-hidden art-placeholder art-loading">
+      <div className="relative min-h-[540px] md:h-[round(down,70vh,1px)] md:min-h-[560px] overflow-hidden art-placeholder art-loading">
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
         <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-10 md:pb-14 flex items-end">
           <div className="flex items-end gap-8 w-full">
