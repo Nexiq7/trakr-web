@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
 import { Film } from 'lucide-react';
-import { artworkSources } from '../lib/images';
+import { artworkSources, type ArtworkKind } from '../lib/images';
 
 interface ArtworkProps {
   image?: string | null;
   alt: string;
   /** Rendered width in CSS pixels — decides which source the browser picks. */
   displayWidth: number;
+  /** Posters and wide backgrounds are stored at different sizes. */
+  kind?: ArtworkKind;
   /** Above-the-fold artwork skips lazy loading and asks for high priority. */
   priority?: boolean;
   className?: string;
@@ -32,11 +34,12 @@ export function Artwork({
   image,
   alt,
   displayWidth,
+  kind = 'poster',
   priority = false,
   className = '',
   imgClassName = '',
 }: ArtworkProps) {
-  const sources = artworkSources(image, displayWidth);
+  const sources = artworkSources(image, displayWidth, kind);
   const src = sources?.src ?? null;
 
   const [state, setState] = useState<LoadState>('loading');
@@ -66,8 +69,16 @@ export function Artwork({
 
   const showPlaceholder = !sources || state !== 'loaded';
 
+  // Callers often position the frame themselves (`absolute inset-0` for a
+  // backdrop). The default `relative` must stand aside then: both classes on one
+  // element and `relative` wins in the stylesheet, dropping the frame into
+  // normal flow where it pushes everything after it out of view.
+  const positioned = /(^|\s)(absolute|fixed|sticky)(\s|$)/.test(className);
+
   return (
-    <div className={`relative overflow-hidden bg-surface ${className}`}>
+    <div
+      className={`${positioned ? '' : 'relative'} overflow-hidden bg-surface ${className}`}
+    >
       {showPlaceholder && (
         <div
           aria-hidden
@@ -96,7 +107,9 @@ export function Artwork({
           fetchPriority={priority ? 'high' : 'auto'}
           onLoad={() => setState('loaded')}
           onError={() => setState('failed')}
-          className={`relative w-full h-full object-cover ${
+          // Pinned to the frame, so artwork whose file isn't exactly the frame's
+          // ratio is cropped to fit instead of leaving a strip uncovered.
+          className={`absolute inset-0 w-full h-full object-cover ${
             instant ? '' : 'transition-opacity duration-500 ease-apple'
           } ${state === 'loaded' ? 'opacity-100' : 'opacity-0'} ${imgClassName}`}
         />

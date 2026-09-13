@@ -27,15 +27,13 @@ import {
   detailsKey,
   fetchBrowse,
   fetchDetails,
+  pickBackdrop,
+  pickLogo,
   type Episode,
   type MediaDetails,
   type MediaType,
   type Title,
 } from '../lib/tvdb';
-
-/** TVDB artwork type ids: 3 is a wide background, 23 a title logo. */
-const ARTWORK_BACKGROUND = 3;
-const ARTWORK_LOGO = 23;
 
 const RELATED_COUNT = 14;
 
@@ -120,9 +118,8 @@ export function Details() {
 
   if (isLoading || !media) return <DetailsSkeleton />;
 
-  const logo = media.artworks?.find((art) => art.type === ARTWORK_LOGO)?.image;
-  const backdrop =
-    media.artworks?.find((art) => art.type === ARTWORK_BACKGROUND)?.image ?? media.image;
+  const logo = pickLogo(media);
+  const backdrop = pickBackdrop(media);
   const rating = media.contentRatings?.find((item) => item.country === 'usa')?.name;
   const network = media.originalNetwork?.name;
   const runtime = media.averageRuntime || media.runtime;
@@ -165,8 +162,9 @@ export function Details() {
     <div className="min-h-screen">
       <header className="relative min-h-[540px] md:h-[70vh] md:min-h-[560px] w-full overflow-hidden">
         <Artwork
-          image={backdrop}
+          image={backdrop ?? media.image}
           alt=""
+          kind={backdrop ? 'backdrop' : 'poster'}
           displayWidth={1600}
           priority
           className="absolute inset-0 w-full h-full"
@@ -341,6 +339,7 @@ export function Details() {
                   <Artwork
                     image={episode.image}
                     alt=""
+                    kind="backdrop"
                     displayWidth={112}
                     className="w-[92px] md:w-28 shrink-0 aspect-video rounded-xl border border-white/8"
                   />

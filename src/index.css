@@ -84,6 +84,14 @@
     from { transform: translateY(-50%); }
     to { transform: translateY(0); }
   }
+
+  /* The spotlight's slide timer. It drives the rotation as well as drawing the
+     bar, so pausing the animation pauses the carousel at exactly that point. */
+  --animate-progress: progress 8s linear forwards;
+  @keyframes progress {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
 }
 
 :root {

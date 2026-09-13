@@ -215,6 +215,34 @@ export interface Artwork {
   /** TVDB artwork type: 3 is a wide background, 23 a title logo. */
   type: number;
   image: string;
+  /** Null for textless art. */
+  language?: string | null;
+  score?: number;
+}
+
+const ARTWORK_BACKGROUND = 3;
+const ARTWORK_LOGO = 23;
+
+function best(artworks: Artwork[] | undefined, type: number, prefer: (art: Artwork) => boolean) {
+  const candidates = (artworks ?? []).filter((art) => art.type === type);
+  return (
+    [...candidates].sort(
+      (a, b) => Number(prefer(b)) - Number(prefer(a)) || (b.score ?? 0) - (a.score ?? 0),
+    )[0]?.image ?? null
+  );
+}
+
+/**
+ * The wide background to show behind a title. Textless art wins: a background
+ * with the title burned in fights the logo laid over it.
+ */
+export function pickBackdrop(media: Pick<MediaDetails, 'artworks'> | null | undefined) {
+  return best(media?.artworks, ARTWORK_BACKGROUND, (art) => !art.language);
+}
+
+/** The title's logo, English where there is one. */
+export function pickLogo(media: Pick<MediaDetails, 'artworks'> | null | undefined) {
+  return best(media?.artworks, ARTWORK_LOGO, (art) => art.language === 'eng');
 }
 
 export interface Character {

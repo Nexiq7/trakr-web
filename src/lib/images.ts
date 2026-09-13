@@ -44,16 +44,28 @@ export interface ArtworkSources {
 }
 
 /**
+ * The widths TVDB stores each kind of artwork at. Posters are 680x1000 with a
+ * 340x500 thumbnail; wide backgrounds are 1920x1080 with a 640x360 one. The
+ * `w` descriptors in a srcSet have to be right for the browser to pick well.
+ */
+export type ArtworkKind = 'poster' | 'backdrop';
+
+const WIDTHS: Record<ArtworkKind, { thumb: number; full: number }> = {
+  poster: { thumb: 340, full: 680 },
+  backdrop: { thumb: 640, full: 1920 },
+};
+
+/**
  * Sources for artwork that renders at `displayWidth` CSS pixels.
  *
- * The thumbnail is 340px wide, so it covers a 170px card at 2x. Above that the
- * browser picks the full file on its own — `srcSet` describes both and lets the
- * device's pixel ratio and the `sizes` hint decide, rather than us guessing at
- * render time.
+ * The thumbnail covers a 170px poster card at 2x, or a 320px backdrop card. Above
+ * that the browser picks the full file on its own — `srcSet` describes both and
+ * lets the device's pixel ratio and the `sizes` hint decide.
  */
 export function artworkSources(
   image: string | null | undefined,
   displayWidth: number,
+  kind: ArtworkKind = 'poster',
 ): ArtworkSources | null {
   const full = resolveImage(image);
   if (!full) return null;
@@ -61,9 +73,10 @@ export function artworkSources(
   const thumb = thumbnailUrl(full);
   if (!thumb || thumb === full) return { src: full };
 
+  const widths = WIDTHS[kind];
   return {
     src: thumb,
-    srcSet: `${thumb} 340w, ${full} 680w`,
+    srcSet: `${thumb} ${widths.thumb}w, ${full} ${widths.full}w`,
     sizes: `${displayWidth}px`,
   };
 }

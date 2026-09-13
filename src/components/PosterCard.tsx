@@ -21,13 +21,6 @@ interface PosterCardProps {
   statusLabel?: string;
 }
 
-const STATUS_TINT: Record<string, string> = {
-  watching: 'bg-emerald-400',
-  planning: 'bg-accent',
-  completed: 'bg-sky-400',
-  dropped: 'bg-white/40',
-};
-
 /**
  * One title in a grid or rail.
  *
@@ -53,7 +46,6 @@ export function PosterCard({
 
   const entry = entryFor(type, id);
   const saved = entry !== undefined;
-  const status = entry?.status;
 
   return (
     <div className="group relative w-full">
@@ -73,18 +65,6 @@ export function PosterCard({
             className="absolute inset-0"
             imgClassName="transition-transform duration-[900ms] ease-apple group-hover:scale-[1.08]"
           />
-
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 pointer-events-none"
-          />
-
-          {status && (
-            <span
-              aria-hidden
-              className={`absolute left-0 right-0 bottom-0 h-[3px] ${STATUS_TINT[status] ?? 'bg-accent'}`}
-            />
-          )}
 
           {statusLabel && (
             <span className="absolute bottom-2.5 left-2.5 px-2 py-1 rounded-md bg-black/65 backdrop-blur-md border border-white/10 text-[9px] font-semibold uppercase tracking-wider text-white/80">
