@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
+    <!-- Posters come from these two hosts. Opening the connections while the
+         app boots saves the DNS and TLS round trips on the first images. No
+         `crossorigin`: images load without CORS, and a CORS preconnect would
+         open a connection they can't reuse. -->
+    <link rel="preconnect" href="https://image.tmdb.org" />
+    <link rel="preconnect" href="https://artworks.thetvdb.com" />
     <title>trakr</title>
   </head>
   <body>
