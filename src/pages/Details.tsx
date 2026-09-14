@@ -171,7 +171,10 @@ export function Details() {
           kind={backdrop ? 'backdrop' : 'poster'}
           displayWidth={1600}
           priority
-          className="absolute inset-0 w-full h-full"
+          // Ends 4px above the header's bottom edge. The slowly zooming image is
+          // composited on its own layer, and where it and the scrims met the
+          // same edge a one-pixel line of it could show below the fade.
+          className="absolute inset-x-0 top-0 bottom-1"
           imgClassName="animate-subtle-zoom"
         />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/25" />

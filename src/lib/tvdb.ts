@@ -167,6 +167,31 @@ export function fetchBrowse({ type, sort, genres }: BrowseParams): Promise<Title
   );
 }
 
+/**
+ * One page of a browse list, for Discover's infinite scroll.
+ *
+ * Unlike `fetchBrowse`, every selected genre goes in one request: the server
+ * intersects them before paging, which is the only way page boundaries stay
+ * consistent when several genres are combined.
+ */
+export function fetchBrowsePage(
+  { type, sort, genres }: BrowseParams,
+  page: number,
+): Promise<{ data: Title[]; hasMore: boolean }> {
+  const params = new URLSearchParams({ page: String(page) });
+  if (sort === 'trending') {
+    params.set('trending', '1');
+  } else {
+    params.set('sort', sort);
+    params.set('sortType', sort === 'name' ? 'asc' : 'desc');
+  }
+  if (genres.length > 0) params.set('genre', [...genres].sort((a, b) => a - b).join(','));
+
+  return getJson<{ data?: Title[]; hasMore?: boolean }>(
+    `/tvdb/browse/${apiType(type)}?${params}`,
+  ).then((json) => ({ data: json.data || [], hasMore: Boolean(json.hasMore) }));
+}
+
 export const popularKey = (type: MediaType) => `popular:${type}`;
 
 export function fetchPopular(type: MediaType): Promise<Title[]> {

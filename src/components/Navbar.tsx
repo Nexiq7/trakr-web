@@ -51,10 +51,14 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
   return (
     <header className="fixed top-0 inset-x-0 z-[150] flex justify-center px-4 pt-3 md:pt-4 pointer-events-none">
       <nav
-        className={`pointer-events-auto flex items-center gap-2 rounded-full transition-all duration-500 ease-apple ${
+        // Same padding and border width in both states, and only colours and
+        // the shadow animate. The bar used to shrink its padding when scrolled
+        // and grow it back over half a second at the top, which read as the
+        // icons drifting down a moment after the page stopped moving.
+        className={`pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 border transition-[background-color,border-color,box-shadow] duration-500 ease-apple ${
           condensed
-            ? 'glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 py-2'
-            : 'bg-transparent border border-transparent px-3 py-2.5'
+            ? 'glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
+            : 'bg-transparent border-transparent shadow-none'
         }`}
       >
         <Link
@@ -76,18 +80,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                 // Icon-only, so the name has to come from somewhere: the label is
                 // announced to screen readers and shown as a tooltip on hover.
                 aria-label={link.label}
+                aria-current={active ? 'page' : undefined}
                 title={link.label}
-                className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
+                // No background behind the active icon: the current page is shown
+                // by a brighter, slightly heavier icon, so the bar stays a row of
+                // plain glyphs.
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
                   active ? 'text-white' : 'text-white/50 hover:text-white/85'
                 }`}
               >
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-full bg-white/10 border border-white/8"
-                  />
-                )}
-                <link.icon size={17} className="relative" />
+                <link.icon size={17} strokeWidth={active ? 2.4 : 2} />
               </Link>
             );
           })}

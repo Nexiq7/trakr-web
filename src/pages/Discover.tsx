@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Check, SlidersHorizontal, X } from 'lucide-react';
+import { Check, RotateCw, SlidersHorizontal, X } from 'lucide-react';
 import { PosterCard, PosterCardSkeleton } from '../components/PosterCard';
 import { Segmented } from '../components/ui/Segmented';
 import { useResource } from '../hooks/useResource';
+import { useInfiniteList } from '../hooks/useInfiniteList';
 import {
   browseKey,
-  fetchBrowse,
+  fetchBrowsePage,
   fetchGenres,
   genresKey,
   type Genre,
@@ -27,10 +28,17 @@ const SORTS: { id: SortId; label: string }[] = [
   { id: 'name', label: 'A–Z' },
 ];
 
-const PAGE_SIZE = 30;
 
 /** Poster width at the widest column, used to pick an artwork source. */
 const CARD_WIDTH = 190;
+
+/** The line under the heading, per sort — the list has no total to count any more. */
+const SORT_DESCRIPTIONS: Record<SortId, (noun: string) => string> = {
+  trending: (noun) => `The ${noun} people are watching this week`,
+  score: (noun) => `The most popular ${noun} right now`,
+  firstAired: (noun) => `The newest ${noun} in the catalog`,
+  name: (noun) => `Every ${noun === 'movies' ? 'movie' : 'series'}, A to Z`,
+};
 
 function parseSort(value: string | null): SortId {
   return SORTS.some((sort) => sort.id === value) ? (value as SortId) : 'trending';
@@ -58,25 +66,27 @@ export function Discover() {
   const sort = parseSort(searchParams.get('sort'));
   const selectedGenres = useMemo(() => parseGenres(searchParams.get('genres')), [searchParams]);
 
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const genresState = useResource<Genre[]>(genresKey, fetchGenres);
   const genres = genresState.data ?? [];
 
   const key = browseKey({ type, sort, genres: selectedGenres });
-  const { data, isLoading } = useResource<Title[]>(key, () =>
-    fetchBrowse({ type, sort, genres: selectedGenres }),
+  // Destructured rather than read off one object: the sentinel setter is used
+  // as a `ref`, and the React lint then treats every property of its parent
+  // object as a ref that mustn't be read during render.
+  const {
+    items,
+    hasMore,
+    isInitialLoading,
+    isLoadingMore,
+    error: loadError,
+    freshFrom,
+    attachSentinel,
+    retry,
+  } = useInfiniteList<Title>(key, (page) =>
+    fetchBrowsePage({ type, sort, genres: selectedGenres }, page),
   );
-  const items = data ?? [];
-
-  // Any change of filter is a new result set, so paging starts over. Adjusting
-  // during render keeps the grid from painting page 3 of the previous filter.
-  const [pagedKey, setPagedKey] = useState(key);
-  if (pagedKey !== key) {
-    setPagedKey(key);
-    setVisibleCount(PAGE_SIZE);
-  }
 
   const patchParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -88,6 +98,12 @@ export function Discover() {
       // Filters replace rather than push: Back should leave Discover, not walk
       // backwards through every chip you tapped.
       setSearchParams(next, { replace: true });
+
+      // A new filter is a new list starting from its first page. Left scrolled
+      // deep into the old one, the reader would land at the bottom of an empty
+      // grid, and the scroll sentinel — already in view — would chain-load
+      // pages just to fill the space above them.
+      if (window.scrollY > 240) window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     [searchParams, setSearchParams],
   );
@@ -99,26 +115,6 @@ export function Discover() {
     patchParams({ genres: next.join(',') });
   };
 
-  // Infinite scroll: a sentinel below the grid pages in the next batch as it
-  // comes into view, so browsing is one continuous scroll.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const hasMore = visibleCount < items.length;
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) setVisibleCount((count) => count + PAGE_SIZE);
-      },
-      { rootMargin: '600px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, items.length]);
-
-  const visibleItems = items.slice(0, visibleCount);
   const activeFilterCount = selectedGenres.length;
 
   return (
@@ -127,9 +123,7 @@ export function Discover() {
         <header className="mb-7">
           <h1 className="text-[34px] md:text-[46px] font-semibold tracking-tight">Discover</h1>
           <p className="text-white/45 text-[14.5px] mt-2">
-            {isLoading
-              ? 'Loading the catalog…'
-              : `${items.length} ${type === 'movie' ? 'movies' : 'series'} to browse`}
+            {SORT_DESCRIPTIONS[sort](type === 'movie' ? 'movies' : 'series')}
           </p>
         </header>
       </div>
@@ -222,13 +216,13 @@ export function Discover() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 mt-7">
-        {isLoading ? (
+        {isInitialLoading ? (
           <Grid>
             {Array.from({ length: 18 }).map((_, index) => (
               <PosterCardSkeleton key={index} />
             ))}
           </Grid>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && !loadError ? (
           <div className="text-center py-24 rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
             <p className="text-white/70 font-medium text-[15px]">Nothing matches those filters</p>
             <p className="text-white/35 text-[13px] mt-2">
@@ -246,32 +240,73 @@ export function Discover() {
         ) : (
           <>
             <Grid>
-              {visibleItems.map((item, index) => (
-                <PosterCard
-                  key={item.id}
-                  type={type}
-                  id={item.id}
-                  name={item.name}
-                  subtitle={item.year}
-                  image={item.image}
-                  displayWidth={CARD_WIDTH}
-                  priority={index < 12}
-                />
-              ))}
+              {items.map((item, index) => {
+                // Only the latest page animates in, each card a beat after the
+                // one before it; the stagger is capped so a long page doesn't
+                // keep its last row waiting.
+                const fresh = index >= freshFrom;
+                return (
+                  <div
+                    key={item.id}
+                    className={fresh ? 'animate-fade-up' : undefined}
+                    style={
+                      fresh
+                        ? { animationDelay: `${Math.min(index - freshFrom, 12) * 45}ms` }
+                        : undefined
+                    }
+                  >
+                    <PosterCard
+                      type={type}
+                      id={item.id}
+                      name={item.name}
+                      subtitle={item.year}
+                      image={item.image}
+                      displayWidth={CARD_WIDTH}
+                      priority={index < 12}
+                    />
+                  </div>
+                );
+              })}
             </Grid>
 
-            {hasMore && (
-              <>
-                <div ref={sentinelRef} aria-hidden className="h-px" />
-                <Grid className="mt-8">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <PosterCardSkeleton key={index} />
-                  ))}
-                </Grid>
-              </>
+
+            {isLoadingMore && items.length > 0 && (
+              <Grid className="mt-9 animate-fade-in">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <PosterCardSkeleton key={index} />
+                ))}
+              </Grid>
+            )}
+
+            {loadError && (
+              <div className="flex flex-col items-center gap-3 py-12 animate-fade-in">
+                <p className="text-white/50 text-[13.5px]">
+                  {items.length > 0 ? "Couldn't load more titles." : "Couldn't load the catalog."}
+                </p>
+                <button
+                  onClick={retry}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/8 border border-white/10 text-[13px] font-medium text-white/80 hover:text-white hover:bg-white/14 transition-colors duration-300"
+                >
+                  <RotateCw size={13} /> Try again
+                </button>
+              </div>
+            )}
+
+            {!hasMore && items.length > 0 && (
+              <p className="flex items-center justify-center gap-3 mt-14 text-[12px] text-white/25 animate-fade-in">
+                <span aria-hidden className="h-px w-10 bg-white/10" />
+                That's everything
+                <span aria-hidden className="h-px w-10 bg-white/10" />
+              </p>
             )}
           </>
         )}
+
+        {/* Outside the branches above on purpose: the first page is loaded by
+            this same sentinel, so it has to exist while the skeletons show,
+            not only once there are cards. The observer's margin starts each
+            page well before the reader reaches the bottom. */}
+        {hasMore && !loadError && <div ref={attachSentinel} aria-hidden className="h-px" />}
       </div>
     </div>
   );
