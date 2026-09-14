@@ -111,6 +111,17 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Tailwind v4's reset gives buttons the default arrow cursor. Everything
+   clickable here is a button styled to look pressable, so it should get the
+   hand too. In a base layer so a utility like `disabled:cursor-default` still
+   wins where it's set. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 /* The app's own scrollbar, so the default light-grey Windows one doesn't sit
    against a black page. */
 @media (pointer: fine) {
