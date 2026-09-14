@@ -22,7 +22,7 @@ interface SpotlightProps {
   isLoading: boolean;
 }
 
-const MAX_SLIDES = 5;
+const MAX_SLIDES = 10;
 
 /**
  * The extended record for one slide.
@@ -49,14 +49,20 @@ function useSlideDetails(type: MediaType, id: string | number) {
 export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   const slides = items.slice(0, MAX_SLIDES);
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  // The slide being faded out. Jumping with a dot can leave from anywhere, so
+  // it's tracked rather than assumed to be the one before.
+  const [previous, setPrevious] = useState<number | null>(null);
   // The timer is a CSS animation, which reduced motion shortens to nothing —
   // left running it would flick through every slide at once.
   const [reducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
 
-  const next = () => setIndex((current) => (current + 1) % slides.length);
+  const go = (target: number) => {
+    setPrevious(index);
+    setIndex(target);
+  };
+  const next = () => go((index + 1) % slides.length);
 
   // Decode the next slide's background while this one is on screen, so the
   // crossfade never reveals a half-loaded image.
@@ -73,7 +79,6 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   if (isLoading || slides.length === 0) return <SpotlightSkeleton />;
 
   const current = slides[Math.min(index, slides.length - 1)]!;
-  const playState = paused ? 'paused' : 'running';
 
   return (
     <section
@@ -81,15 +86,23 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
-      {slides.map((slide, slideIndex) => (
-        <SlideBackdrop
-          key={slide.id}
-          type={type}
-          slide={slide}
-          active={slideIndex === index}
-          priority={slideIndex === 0}
-        />
-      ))}
+      {/* Only the slide on screen, the one fading out and the one up next are
+          mounted. Each backdrop fetches a details record and a full-size
+          background, and with ten slides loading all of them up front would
+          cost megabytes nobody may scroll far enough to see. */}
+      {slides.map((slide, slideIndex) =>
+        slideIndex === index ||
+        slideIndex === previous ||
+        slideIndex === (index + 1) % slides.length ? (
+          <SlideBackdrop
+            key={slide.id}
+            type={type}
+            slide={slide}
+            active={slideIndex === index}
+            priority={slideIndex === 0}
+          />
+        ) : null,
+      )}
 
       {/* Scrims: dark behind the copy on the left, a floor along the bottom,
           and a band under the navbar, which is transparent at the top. */}
@@ -99,65 +112,51 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
 
       {slides.length > 1 && !reducedMotion && (
         // Invisible, but it is the carousel's clock: when this bar finishes, the
-        // slide advances. Keyed by slide so each one starts from zero.
+        // slide advances. Keyed by slide so each one starts from zero. It never
+        // pauses — hovering or focusing the hero used to stop it, which read as
+        // the carousel stalling rather than waiting.
         <span
           key={index}
           aria-hidden
           onAnimationEnd={next}
           className="absolute w-px h-px opacity-0 pointer-events-none animate-progress"
-          style={{ animationPlayState: playState }}
         />
       )}
 
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
-        {/* Only the copy, buttons and dots pause the rotation. The hero covers
-            most of the screen, so pausing on any hover stopped it nearly all the
-            time; this way it waits only while someone is reading or reaching
-            for a control. */}
-        <div
-          className="flex flex-col gap-8 w-fit max-w-full"
-          onPointerEnter={() => setPaused(true)}
-          onPointerLeave={() => setPaused(false)}
-          onFocus={() => setPaused(true)}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
-          }}
-        >
-          <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
+        <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
 
-          {slides.length > 1 && (
-            <div className="flex items-center gap-2">
-              {slides.map((slide, slideIndex) => (
-                <button
-                  key={slide.id}
-                  onClick={() => setIndex(slideIndex)}
-                  aria-label={`Show ${slide.name}`}
-                  aria-current={slideIndex === index}
-                  className="h-6 flex items-center"
+        {slides.length > 1 && (
+          <div className="flex items-center gap-2">
+            {slides.map((slide, slideIndex) => (
+              <button
+                key={slide.id}
+                onClick={() => slideIndex !== index && go(slideIndex)}
+                aria-label={`Show ${slide.name}`}
+                aria-current={slideIndex === index}
+                className="h-6 flex items-center"
+              >
+                <span
+                  className={`relative block h-[5px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
+                    slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
+                  }`}
                 >
-                  <span
-                    className={`relative block h-[3px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
-                      slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
-                    }`}
-                  >
-                    {slideIndex === index && (
-                      // A fixed 40px bar rather than one sized to the track: the
-                      // track widens as the slide starts, and a bar scaled against
-                      // a growing width jumps instead of filling evenly.
-                      <span
-                        key={index}
-                        className={`absolute inset-y-0 left-0 w-10 bg-white origin-left ${
-                          reducedMotion ? '' : 'animate-progress'
-                        }`}
-                        style={{ animationPlayState: playState }}
-                      />
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  {slideIndex === index && (
+                    // A fixed 40px bar rather than one sized to the track: the
+                    // track widens as the slide starts, and a bar scaled against
+                    // a growing width jumps instead of filling evenly.
+                    <span
+                      key={index}
+                      className={`absolute inset-y-0 left-0 w-10 bg-white origin-left ${
+                        reducedMotion ? '' : 'animate-progress'
+                      }`}
+                    />
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -180,7 +179,10 @@ function SlideBackdrop({
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-0 transition-opacity duration-[1200ms] ease-apple ${
+      // Ends 4px above the hero's bottom edge: the zooming, cross-fading image
+      // is composited separately from the scrims over it, and where both met
+      // the edge a one-pixel line of the image could show below the fade.
+      className={`absolute inset-x-0 top-0 bottom-1 overflow-hidden transition-opacity duration-[1200ms] ease-apple ${
         active ? 'opacity-100' : 'opacity-0'
       }`}
     >
@@ -231,12 +233,12 @@ function SlideCopy({ slide, type, rank }: { slide: Title; type: MediaType; rank:
 
   return (
     <div className="max-w-xl flex flex-col gap-4 animate-fade-up">
-      <span className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
-        <span className="flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md bg-accent text-white text-[12px] font-bold tabular-nums">
-          {rank}
-        </span>
-        in trending {type === 'movie' ? 'movies' : 'series'}
-      </span>
+      {/* Set as a quiet line of type, the way a chart position reads on a
+          streaming service: the rank carries the weight, the rest recedes. */}
+      <p className="text-[13px] md:text-[14px] font-medium tracking-tight text-white/55">
+        <span className="font-semibold text-white tabular-nums">#{rank}</span> in Trending{' '}
+        {type === 'movie' ? 'Movies' : 'Series'}
+      </p>
 
       {logo ? (
         <img
@@ -317,7 +319,7 @@ function SpotlightSkeleton() {
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60" />
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
         <div className="max-w-xl flex flex-col gap-4">
-          <div className="h-6 w-44 rounded-md skeleton" />
+          <div className="h-3.5 w-40 rounded-full skeleton" />
           <div className="h-24 w-80 rounded-2xl skeleton" />
           <div className="h-3.5 w-56 rounded-full skeleton" />
           <div className="flex flex-col gap-2">
