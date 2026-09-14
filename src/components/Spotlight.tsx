@@ -49,7 +49,6 @@ function useSlideDetails(type: MediaType, id: string | number) {
 export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   const slides = items.slice(0, MAX_SLIDES);
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   // The timer is a CSS animation, which reduced motion shortens to nothing —
   // left running it would flick through every slide at once.
   const [reducedMotion] = useState(
@@ -73,7 +72,6 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   if (isLoading || slides.length === 0) return <SpotlightSkeleton />;
 
   const current = slides[Math.min(index, slides.length - 1)]!;
-  const playState = paused ? 'paused' : 'running';
 
   return (
     <section
@@ -99,65 +97,51 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
 
       {slides.length > 1 && !reducedMotion && (
         // Invisible, but it is the carousel's clock: when this bar finishes, the
-        // slide advances. Keyed by slide so each one starts from zero.
+        // slide advances. Keyed by slide so each one starts from zero. It never
+        // pauses — hovering or focusing the hero used to stop it, which read as
+        // the carousel stalling rather than waiting.
         <span
           key={index}
           aria-hidden
           onAnimationEnd={next}
           className="absolute w-px h-px opacity-0 pointer-events-none animate-progress"
-          style={{ animationPlayState: playState }}
         />
       )}
 
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
-        {/* Only the copy, buttons and dots pause the rotation. The hero covers
-            most of the screen, so pausing on any hover stopped it nearly all the
-            time; this way it waits only while someone is reading or reaching
-            for a control. */}
-        <div
-          className="flex flex-col gap-8 w-fit max-w-full"
-          onPointerEnter={() => setPaused(true)}
-          onPointerLeave={() => setPaused(false)}
-          onFocus={() => setPaused(true)}
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
-          }}
-        >
-          <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
+        <SlideCopy key={current.id} slide={current} type={type} rank={index + 1} />
 
-          {slides.length > 1 && (
-            <div className="flex items-center gap-2">
-              {slides.map((slide, slideIndex) => (
-                <button
-                  key={slide.id}
-                  onClick={() => setIndex(slideIndex)}
-                  aria-label={`Show ${slide.name}`}
-                  aria-current={slideIndex === index}
-                  className="h-6 flex items-center"
+        {slides.length > 1 && (
+          <div className="flex items-center gap-2">
+            {slides.map((slide, slideIndex) => (
+              <button
+                key={slide.id}
+                onClick={() => setIndex(slideIndex)}
+                aria-label={`Show ${slide.name}`}
+                aria-current={slideIndex === index}
+                className="h-6 flex items-center"
+              >
+                <span
+                  className={`relative block h-[3px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
+                    slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
+                  }`}
                 >
-                  <span
-                    className={`relative block h-[3px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
-                      slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
-                    }`}
-                  >
-                    {slideIndex === index && (
-                      // A fixed 40px bar rather than one sized to the track: the
-                      // track widens as the slide starts, and a bar scaled against
-                      // a growing width jumps instead of filling evenly.
-                      <span
-                        key={index}
-                        className={`absolute inset-y-0 left-0 w-10 bg-white origin-left ${
-                          reducedMotion ? '' : 'animate-progress'
-                        }`}
-                        style={{ animationPlayState: playState }}
-                      />
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  {slideIndex === index && (
+                    // A fixed 40px bar rather than one sized to the track: the
+                    // track widens as the slide starts, and a bar scaled against
+                    // a growing width jumps instead of filling evenly.
+                    <span
+                      key={index}
+                      className={`absolute inset-y-0 left-0 w-10 bg-white origin-left ${
+                        reducedMotion ? '' : 'animate-progress'
+                      }`}
+                    />
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
