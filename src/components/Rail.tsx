@@ -50,12 +50,56 @@ export function Rail({ title, seeAll, children }: RailProps) {
     };
   }, [measure, children]);
 
-  // Just under a full viewport of cards, so the one at the edge stays visible
-  // and gives you your place after the jump.
-  const page = (direction: number) => {
+  // Where an arrow-started scroll is heading. A second click while the first is
+  // still animating pages on from there, not from wherever the animation is.
+  const pendingLeft = useRef<number | null>(null);
+  const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Move exactly one screen of whole cards.
+   *
+   * Paging by a fraction of the width skipped or repeated cards depending on
+   * the window size. Instead this counts the cards that are fully visible and
+   * moves by that many, so a click to the right starts with the first card that
+   * was cut off, and a click to the left undoes it exactly.
+   */
+  const page = (direction: 1 | -1) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction * (el.clientWidth * 0.82), behavior: 'smooth' });
+    const items = Array.from(el.children) as HTMLElement[];
+    if (items.length === 0) return;
+
+    const style = getComputedStyle(el);
+    const padStart = parseFloat(style.paddingLeft) || 0;
+    const padEnd = parseFloat(style.paddingRight) || 0;
+    const containerLeft = el.getBoundingClientRect().left;
+
+    // Card positions in scroll coordinates: where scrollLeft must be for the
+    // card's left edge to sit at the container's left edge.
+    const lefts = items.map((item) => item.getBoundingClientRect().left - containerLeft + el.scrollLeft);
+    const widths = items.map((item) => item.getBoundingClientRect().width);
+
+    const from = pendingLeft.current ?? el.scrollLeft;
+    const viewStart = from + padStart;
+    const viewEnd = from + el.clientWidth - padEnd;
+
+    const first = Math.max(0, lefts.findIndex((left) => left >= viewStart - 1));
+    const perPage = Math.max(
+      1,
+      lefts.filter((left, i) => left >= viewStart - 1 && left + widths[i]! <= viewEnd + 1).length,
+    );
+
+    const targetIndex = Math.min(items.length - 1, Math.max(0, first + direction * perPage));
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    const target = Math.min(maxScroll, Math.max(0, lefts[targetIndex]! - padStart));
+
+    pendingLeft.current = target;
+    if (pendingTimer.current) clearTimeout(pendingTimer.current);
+    pendingTimer.current = setTimeout(() => {
+      pendingLeft.current = null;
+    }, 700);
+
+    el.scrollTo({ left: target, behavior: 'smooth' });
   };
 
   return (
@@ -79,8 +123,8 @@ export function Rail({ title, seeAll, children }: RailProps) {
 
           <div className="hidden md:flex gap-1.5">
             {[
-              { dir: -1, icon: ChevronLeft, enabled: edges.start, label: 'Scroll left' },
-              { dir: 1, icon: ChevronRight, enabled: edges.end, label: 'Scroll right' },
+              { dir: -1 as const, icon: ChevronLeft, enabled: edges.start, label: 'Scroll left' },
+              { dir: 1 as const, icon: ChevronRight, enabled: edges.end, label: 'Scroll right' },
             ].map(({ dir, icon: Icon, enabled, label }) => (
               <button
                 key={label}
