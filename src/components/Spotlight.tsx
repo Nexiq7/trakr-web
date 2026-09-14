@@ -179,7 +179,10 @@ function SlideBackdrop({
   return (
     <div
       aria-hidden={!active}
-      className={`absolute inset-0 transition-opacity duration-[1200ms] ease-apple ${
+      // Ends 4px above the hero's bottom edge: the zooming, cross-fading image
+      // is composited separately from the scrims over it, and where both met
+      // the edge a one-pixel line of the image could show below the fade.
+      className={`absolute inset-x-0 top-0 bottom-1 overflow-hidden transition-opacity duration-[1200ms] ease-apple ${
         active ? 'opacity-100' : 'opacity-0'
       }`}
     >

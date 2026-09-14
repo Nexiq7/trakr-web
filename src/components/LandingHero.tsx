@@ -54,7 +54,12 @@ export function LandingHero({ posters }: LandingHeroProps) {
       {columns.length > 0 && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 flex justify-center gap-3 md:gap-4 opacity-[0.72]"
+          // Stops 4px short of the bottom edge and clips itself. The drifting
+          // columns are composited on their own layer, which rounds its clip at
+          // that edge differently from the scrims painted over it, so on some
+          // loads a one-pixel line of posters showed below the fade. Ending the
+          // wall above the edge leaves nothing there to show.
+          className="pointer-events-none absolute inset-x-0 top-0 bottom-1 overflow-hidden flex justify-center gap-3 md:gap-4 opacity-[0.72]"
         >
           {columns.map((column, columnIndex) => (
             <div
