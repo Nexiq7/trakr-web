@@ -76,18 +76,16 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
                 // Icon-only, so the name has to come from somewhere: the label is
                 // announced to screen readers and shown as a tooltip on hover.
                 aria-label={link.label}
+                aria-current={active ? 'page' : undefined}
                 title={link.label}
-                className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
+                // No background behind the active icon: the current page is shown
+                // by a brighter, slightly heavier icon, so the bar stays a row of
+                // plain glyphs.
+                className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors duration-300 ease-apple ${
                   active ? 'text-white' : 'text-white/50 hover:text-white/85'
                 }`}
               >
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 rounded-full bg-white/10 border border-white/8"
-                  />
-                )}
-                <link.icon size={17} className="relative" />
+                <link.icon size={17} strokeWidth={active ? 2.4 : 2} />
               </Link>
             );
           })}
