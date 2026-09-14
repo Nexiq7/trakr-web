@@ -22,7 +22,7 @@ interface SpotlightProps {
   isLoading: boolean;
 }
 
-const MAX_SLIDES = 5;
+const MAX_SLIDES = 10;
 
 /**
  * The extended record for one slide.
@@ -49,13 +49,20 @@ function useSlideDetails(type: MediaType, id: string | number) {
 export function Spotlight({ items, type, isLoading }: SpotlightProps) {
   const slides = items.slice(0, MAX_SLIDES);
   const [index, setIndex] = useState(0);
+  // The slide being faded out. Jumping with a dot can leave from anywhere, so
+  // it's tracked rather than assumed to be the one before.
+  const [previous, setPrevious] = useState<number | null>(null);
   // The timer is a CSS animation, which reduced motion shortens to nothing —
   // left running it would flick through every slide at once.
   const [reducedMotion] = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
 
-  const next = () => setIndex((current) => (current + 1) % slides.length);
+  const go = (target: number) => {
+    setPrevious(index);
+    setIndex(target);
+  };
+  const next = () => go((index + 1) % slides.length);
 
   // Decode the next slide's background while this one is on screen, so the
   // crossfade never reveals a half-loaded image.
@@ -79,15 +86,23 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
-      {slides.map((slide, slideIndex) => (
-        <SlideBackdrop
-          key={slide.id}
-          type={type}
-          slide={slide}
-          active={slideIndex === index}
-          priority={slideIndex === 0}
-        />
-      ))}
+      {/* Only the slide on screen, the one fading out and the one up next are
+          mounted. Each backdrop fetches a details record and a full-size
+          background, and with ten slides loading all of them up front would
+          cost megabytes nobody may scroll far enough to see. */}
+      {slides.map((slide, slideIndex) =>
+        slideIndex === index ||
+        slideIndex === previous ||
+        slideIndex === (index + 1) % slides.length ? (
+          <SlideBackdrop
+            key={slide.id}
+            type={type}
+            slide={slide}
+            active={slideIndex === index}
+            priority={slideIndex === 0}
+          />
+        ) : null,
+      )}
 
       {/* Scrims: dark behind the copy on the left, a floor along the bottom,
           and a band under the navbar, which is transparent at the top. */}
@@ -116,7 +131,7 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
             {slides.map((slide, slideIndex) => (
               <button
                 key={slide.id}
-                onClick={() => setIndex(slideIndex)}
+                onClick={() => slideIndex !== index && go(slideIndex)}
                 aria-label={`Show ${slide.name}`}
                 aria-current={slideIndex === index}
                 className="h-6 flex items-center"
