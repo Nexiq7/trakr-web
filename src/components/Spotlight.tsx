@@ -137,7 +137,7 @@ export function Spotlight({ items, type, isLoading }: SpotlightProps) {
                 className="h-6 flex items-center"
               >
                 <span
-                  className={`relative block h-[3px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
+                  className={`relative block h-[5px] rounded-full overflow-hidden transition-[width,background-color] duration-500 ease-apple ${
                     slideIndex === index ? 'w-10 bg-white/25' : 'w-4 bg-white/20 hover:bg-white/40'
                   }`}
                 >
