@@ -233,12 +233,12 @@ function SlideCopy({ slide, type, rank }: { slide: Title; type: MediaType; rank:
 
   return (
     <div className="max-w-xl flex flex-col gap-4 animate-fade-up">
-      <span className="flex items-center gap-2 text-[12px] font-semibold text-white/70">
-        <span className="flex items-center justify-center min-w-6 h-6 px-1.5 rounded-md bg-accent text-white text-[12px] font-bold tabular-nums">
-          {rank}
-        </span>
-        in trending {type === 'movie' ? 'movies' : 'series'}
-      </span>
+      {/* Set as a quiet line of type, the way a chart position reads on a
+          streaming service: the rank carries the weight, the rest recedes. */}
+      <p className="text-[13px] md:text-[14px] font-medium tracking-tight text-white/55">
+        <span className="font-semibold text-white tabular-nums">#{rank}</span> in Trending{' '}
+        {type === 'movie' ? 'Movies' : 'Series'}
+      </p>
 
       {logo ? (
         <img
@@ -319,7 +319,7 @@ function SpotlightSkeleton() {
       <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/60" />
       <div className="relative z-10 h-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16 pt-28 pb-12 md:pb-16 flex flex-col justify-end gap-8">
         <div className="max-w-xl flex flex-col gap-4">
-          <div className="h-6 w-44 rounded-md skeleton" />
+          <div className="h-3.5 w-40 rounded-full skeleton" />
           <div className="h-24 w-80 rounded-2xl skeleton" />
           <div className="h-3.5 w-56 rounded-full skeleton" />
           <div className="flex flex-col gap-2">
