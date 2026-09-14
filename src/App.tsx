@@ -92,13 +92,13 @@ function Shell() {
       <ScrollToTop />
       <Navbar onOpenSearch={() => setPaletteOpen(true)} />
 
-      <main className="min-h-screen pb-28 md:pb-0">
+      <main className="min-h-screen">
         <RoutedPages />
       </main>
 
       <BottomNav />
 
-      <footer className="hidden md:flex flex-col items-center gap-3 py-16 px-12 text-center border-t border-white/5">
+      <footer className="flex flex-col items-center gap-3 pt-16 pb-32 md:pb-16 px-6 md:px-12 text-center border-t border-white/5">
         <a
           href={REPO_URL}
           target="_blank"
@@ -110,6 +110,20 @@ function Shell() {
           <GithubIcon size={18} />
         </a>
         <p className="text-white/25 text-xs">© 2026 trakr</p>
+        {/* TMDB's terms ask for this notice wherever its data is shown. */}
+        <p className="max-w-md text-white/25 text-[11px] leading-relaxed">
+          Trending and popular lists use data from{' '}
+          <a
+            href="https://www.themoviedb.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-white/15 underline-offset-2 hover:text-white/60 transition-colors duration-300"
+          >
+            TMDB
+          </a>
+          . This product uses the TMDB API but is not endorsed or certified by TMDB. Title
+          details come from TheTVDB.
+        </p>
       </footer>
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

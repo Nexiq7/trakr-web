@@ -3,7 +3,6 @@ import { Bookmark, Star } from 'lucide-react';
 import { Artwork } from './Artwork';
 import { useWatchlist } from '../context/WatchlistContext';
 import { useTrackSheet } from '../context/TrackSheetContext';
-import { prefetchImage, resolveImage } from '../lib/images';
 import type { MediaType } from '../lib/tvdb';
 
 const STATUS_TEXT: Record<string, string> = {
@@ -73,9 +72,6 @@ export function PosterCard({
       <Link
         to={`/details/${type}/${id}`}
         className="flex flex-col gap-2.5 w-full outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-4 focus-visible:ring-offset-black rounded-2xl"
-        // By the time the details page mounts, its hero artwork is already in
-        // the browser cache — the transition lands on an image, not a shimmer.
-        onMouseEnter={() => prefetchImage(resolveImage(image))}
       >
         <div className="relative aspect-[2/3] rounded-2xl overflow-hidden border border-white/8 bg-surface shadow-[0_10px_30px_rgba(0,0,0,0.5)] transition-transform duration-500 ease-apple group-hover:-translate-y-1.5 group-hover:shadow-[0_22px_44px_rgba(0,0,0,0.65)]">
           <Artwork

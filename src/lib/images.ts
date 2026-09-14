@@ -10,9 +10,21 @@
  * So: ask for the thumbnail everywhere the image renders small, and let
  * `srcSet` promote to the full file only where a wide viewport actually has the
  * pixels to show it.
+ *
+ * Trending and popular lists come from TMDB, whose posters arrive as
+ * `original` — often 2000x3000 and over a megabyte. TMDB's image server renders
+ * fixed widths from the same path (`w342`, `w780`…), so those get a srcSet of
+ * sized variants instead of the thumbnail rewrite.
  */
 
 const ARTWORK_HOST = 'https://artworks.thetvdb.com';
+const TMDB_IMAGE_RE = /^https:\/\/image\.tmdb\.org\/t\/p\/[^/]+(\/.+)$/;
+
+/** Widths TMDB renders on request, per kind, smallest first. */
+const TMDB_WIDTHS: Record<'poster' | 'backdrop', number[]> = {
+  poster: [185, 342, 500, 780],
+  backdrop: [300, 780, 1280],
+};
 
 /** Absolute artwork URL, or null when there's no artwork to show. */
 export function resolveImage(image?: string | null): string | null {
@@ -69,6 +81,18 @@ export function artworkSources(
 ): ArtworkSources | null {
   const full = resolveImage(image);
   if (!full) return null;
+
+  const tmdb = full.match(TMDB_IMAGE_RE);
+  if (tmdb) {
+    const path = tmdb[1];
+    const widths = TMDB_WIDTHS[kind];
+    return {
+      // The largest sized variant, not `original`, for browsers that ignore srcSet.
+      src: `https://image.tmdb.org/t/p/w${widths[widths.length - 1]}${path}`,
+      srcSet: widths.map((width) => `https://image.tmdb.org/t/p/w${width}${path} ${width}w`).join(', '),
+      sizes: `${displayWidth}px`,
+    };
+  }
 
   const thumb = thumbnailUrl(full);
   if (!thumb || thumb === full) return { src: full };
