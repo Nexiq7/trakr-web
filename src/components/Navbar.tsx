@@ -51,10 +51,14 @@ export function Navbar({ onOpenSearch }: NavbarProps) {
   return (
     <header className="fixed top-0 inset-x-0 z-[150] flex justify-center px-4 pt-3 md:pt-4 pointer-events-none">
       <nav
-        className={`pointer-events-auto flex items-center gap-2 rounded-full transition-all duration-500 ease-apple ${
+        // Same padding and border width in both states, and only colours and
+        // the shadow animate. The bar used to shrink its padding when scrolled
+        // and grow it back over half a second at the top, which read as the
+        // icons drifting down a moment after the page stopped moving.
+        className={`pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 border transition-[background-color,border-color,box-shadow] duration-500 ease-apple ${
           condensed
-            ? 'glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.55)] px-3 py-2'
-            : 'bg-transparent border border-transparent px-3 py-2.5'
+            ? 'glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
+            : 'bg-transparent border-transparent shadow-none'
         }`}
       >
         <Link
