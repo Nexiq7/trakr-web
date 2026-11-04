@@ -104,7 +104,11 @@ export function Rail({ title, seeAll, children }: RailProps) {
 
   return (
     <section className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4 px-6 md:px-10 lg:px-16">
+      {/* Headers and cards share the page column the hero's copy and every
+          other section use, so a rail's first poster starts on the same line
+          as the hero's title. Without it the rails sat at the window's own
+          gutter and everything else indented past them on a wide display. */}
+      <div className="w-full max-w-[1400px] mx-auto flex items-center justify-between gap-4 px-6 md:px-10 lg:px-16">
         <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">{title}</h2>
 
         <div className="flex items-center gap-3">
@@ -142,7 +146,7 @@ export function Rail({ title, seeAll, children }: RailProps) {
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-px-6 md:scroll-px-10 lg:scroll-px-16 px-6 md:px-10 lg:px-16 pb-2"
+        className="w-full max-w-[1400px] mx-auto flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-px-6 md:scroll-px-10 lg:scroll-px-16 px-6 md:px-10 lg:px-16 pb-2"
       >
         {children}
       </div>

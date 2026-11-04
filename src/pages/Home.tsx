@@ -179,7 +179,7 @@ export function Home() {
           type="movie"
         />
 
-        <Reveal className="px-6 md:px-10 lg:px-16">
+        <Reveal className="max-w-[1400px] mx-auto w-full px-6 md:px-10 lg:px-16">
           <Link
             to="/discover"
             className="group flex items-center justify-between gap-6 p-6 md:p-8 rounded-3xl border border-white/8 bg-white/[0.035] hover:border-white/16 transition-colors duration-500 ease-apple edge-highlight relative overflow-hidden"
