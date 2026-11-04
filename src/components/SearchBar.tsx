@@ -63,7 +63,7 @@ export function SearchBar({
         // A flat, solid surface rather than the usual glass: this field sits
         // over the landing page's poster wall as often as over a black page,
         // and glass meant it looked like a different control on each.
-        className="w-full py-4 pl-11 pr-14 rounded-2xl border border-white/10 bg-[#121216] text-[16.5px] text-white placeholder:text-white/30 outline-none transition-all duration-300 ease-apple focus:border-accent/45 focus:shadow-[0_0_0_4px_rgba(124,92,255,0.14)] [&::-webkit-search-cancel-button]:appearance-none"
+        className="w-full py-4 pl-11 pr-14 rounded-2xl border border-white/10 bg-[#121216] text-[16.5px] text-white placeholder:text-white/30 outline-none transition-all duration-300 ease-apple focus:border-white/25 [&::-webkit-search-cancel-button]:appearance-none"
       />
 
       {isLoading && (
