@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface RailProps {
   title: string;
-  /** Optional "See all" destination shown beside the heading. */
+  /** Where the heading leads — the full list for this rail. Headings without one aren't links. */
   seeAll?: string;
   children: ReactNode;
 }
@@ -109,38 +109,42 @@ export function Rail({ title, seeAll, children }: RailProps) {
           as the hero's title. Without it the rails sat at the window's own
           gutter and everything else indented past them on a wide display. */}
       <div className="w-full max-w-[1400px] mx-auto flex items-center justify-between gap-4 px-6 md:px-10 lg:px-16">
-        <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">{title}</h2>
-
-        <div className="flex items-center gap-3">
-          {seeAll && (
+        {/* The heading is the way into the full list — a separate "See all"
+            next to it said the same thing twice. The chevron waits for a
+            hover, so the row reads as a title until you reach for it. */}
+        <h2 className="text-[20px] md:text-[22px] font-semibold tracking-tight">
+          {seeAll ? (
             <Link
               to={seeAll}
-              className="group/link flex items-center gap-1 text-[13px] font-medium text-white/45 hover:text-white transition-colors duration-300 ease-apple"
+              className="group/title inline-flex items-baseline gap-1.5 text-white/95 hover:text-white transition-colors duration-300 ease-apple"
             >
-              See all
-              <ArrowRight
-                size={13}
-                className="transition-transform duration-300 ease-apple group-hover/link:translate-x-0.5"
+              {title}
+              <ChevronRight
+                size={18}
+                aria-hidden
+                className="self-center opacity-0 -translate-x-1 transition-all duration-300 ease-apple group-hover/title:opacity-55 group-hover/title:translate-x-0"
               />
             </Link>
+          ) : (
+            title
           )}
+        </h2>
 
-          <div className="hidden md:flex gap-1.5">
-            {[
-              { dir: -1 as const, icon: ChevronLeft, enabled: edges.start, label: 'Scroll left' },
-              { dir: 1 as const, icon: ChevronRight, enabled: edges.end, label: 'Scroll right' },
-            ].map(({ dir, icon: Icon, enabled, label }) => (
-              <button
-                key={label}
-                onClick={() => page(dir)}
-                disabled={!enabled}
-                aria-label={label}
-                className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/16 flex items-center justify-center transition-all duration-300 ease-apple disabled:opacity-25 disabled:pointer-events-none active:scale-90"
-              >
-                <Icon size={16} />
-              </button>
-            ))}
-          </div>
+        <div className="hidden md:flex items-center gap-1.5">
+          {[
+            { dir: -1 as const, icon: ChevronLeft, enabled: edges.start, label: 'Scroll left' },
+            { dir: 1 as const, icon: ChevronRight, enabled: edges.end, label: 'Scroll right' },
+          ].map(({ dir, icon: Icon, enabled, label }) => (
+            <button
+              key={label}
+              onClick={() => page(dir)}
+              disabled={!enabled}
+              aria-label={label}
+              className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/16 flex items-center justify-center transition-all duration-300 ease-apple disabled:opacity-25 disabled:pointer-events-none active:scale-90"
+            >
+              <Icon size={16} />
+            </button>
+          ))}
         </div>
       </div>
 
