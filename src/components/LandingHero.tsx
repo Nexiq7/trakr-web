@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Artwork } from './Artwork';
 import { GithubIcon } from './GithubIcon';
-import { SearchBar } from './SearchBar';
+import { SearchSuggest } from './SearchSuggest';
 import { REPO_URL } from '../lib/constants';
 import type { Title } from '../lib/tvdb';
 
@@ -37,9 +37,6 @@ const COLUMN_VISIBILITY = [
  * tree entirely.
  */
 export function LandingHero({ posters }: LandingHeroProps) {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-
   const columns = useMemo(() => {
     const usable = posters.filter((item) => item.image).slice(0, COLUMNS * PER_COLUMN);
     if (usable.length === 0) return [];
@@ -50,7 +47,11 @@ export function LandingHero({ posters }: LandingHeroProps) {
   }, [posters]);
 
   return (
-    <section className="relative w-full overflow-hidden flex items-center justify-center px-6 pt-32 pb-20 min-h-[640px] md:min-h-[round(down,92vh,1px)]">
+    // Not `overflow-hidden`: the search field's suggestions hang below the
+    // field and, on a short screen, past the hero's own edge. Each layer that
+    // would otherwise spill clips itself instead, and the section sits above
+    // the rails below so the panel floats over them rather than under.
+    <section className="relative z-10 w-full flex items-center justify-center px-6 pt-32 pb-20 min-h-[640px] md:min-h-[round(down,92vh,1px)]">
       {columns.length > 0 && (
         <div
           aria-hidden
@@ -103,10 +104,11 @@ export function LandingHero({ posters }: LandingHeroProps) {
         aria-hidden
         className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/90 to-transparent"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[14%] -translate-x-1/2 w-[760px] max-w-[150vw] aspect-square rounded-full bg-accent/14 blur-[150px]"
-      />
+      {/* The glow is wider and taller than the hero on a small screen, so it
+          carries its own clip now that the section has none. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute left-1/2 top-[14%] -translate-x-1/2 w-[760px] max-w-[150vw] aspect-square rounded-full bg-accent/14 blur-[150px]" />
+      </div>
 
       <div className="relative z-10 w-full max-w-xl flex flex-col items-center text-center gap-6 animate-fade-up">
         <a
@@ -129,12 +131,7 @@ export function LandingHero({ posters }: LandingHeroProps) {
           Everything you watch, in one place. Find it, save it, pick up where you left off.
         </p>
 
-        <SearchBar
-          className="mt-1"
-          value={query}
-          onChange={setQuery}
-          onSubmit={(term) => navigate(`/search?q=${encodeURIComponent(term)}`)}
-        />
+        <SearchSuggest className="mt-1" />
 
         <div className="flex flex-wrap items-center justify-center gap-2.5 mt-1">
           <Link

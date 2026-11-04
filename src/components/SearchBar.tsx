@@ -1,3 +1,4 @@
+import type { InputHTMLAttributes } from 'react';
 import { ArrowRight, Loader2, Search, X } from 'lucide-react';
 
 interface SearchBarProps {
@@ -12,6 +13,8 @@ interface SearchBarProps {
   autoFocus?: boolean;
   /** Shows a spinner in place of the submit affordance. */
   isLoading?: boolean;
+  /** Passed straight to the input — keyboard handling for a field that suggests as you type. */
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
   className?: string;
 }
 
@@ -22,6 +25,7 @@ export function SearchBar({
   placeholder = 'Search movies and shows…',
   autoFocus = false,
   isLoading = false,
+  inputProps,
   className = '',
 }: SearchBarProps) {
   const trimmed = value.trim();
@@ -47,6 +51,7 @@ export function SearchBar({
       />
 
       <input
+        {...inputProps}
         type="search"
         value={value}
         autoFocus={autoFocus}
