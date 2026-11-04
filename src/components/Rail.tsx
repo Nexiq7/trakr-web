@@ -144,11 +144,18 @@ export function Rail({ title, seeAll, children }: RailProps) {
         </div>
       </div>
 
-      <div
-        ref={scrollRef}
-        className="w-full max-w-[1400px] mx-auto flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-px-6 md:scroll-px-10 lg:scroll-px-16 px-6 md:px-10 lg:px-16 pb-2"
-      >
-        {children}
+      {/* The gutter is the wrapper's, not the scroller's. With the padding
+          inside the scroll box, cards slid through it and showed a clipped
+          sliver out in the margin, left of the heading; with it outside, the
+          row starts and ends on the column's edges, so the first card lines up
+          under the heading and the last one under the arrows. */}
+      <div className="w-full max-w-[1400px] mx-auto px-6 md:px-10 lg:px-16">
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2"
+        >
+          {children}
+        </div>
       </div>
     </section>
   );
